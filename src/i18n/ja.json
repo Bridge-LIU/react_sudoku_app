@@ -1,0 +1,33 @@
+{
+  "difficulty": { "title": "難易度を選択", "easy": "初級", "medium": "中級", "hard": "上級" },
+  "game": {
+    "timer": "経過時間",
+    "mistakes": "ミス",
+    "hints": "ヒント",
+    "reset": "リセット",
+    "resetConfirm": "本当にリセットしますか？",
+    "undo": "元に戻す",
+    "redo": "やり直し",
+    "hintButton": "ヒント",
+    "memoMode": "メモ",
+    "pause": "一時停止",
+    "resume": "再開",
+    "complete": "完成！",
+    "completeStats": "難易度: {{difficulty}} / 用時: {{time}} / ミス: {{mistakes}} / ヒント: {{hints}}"
+  },
+  "hint": {
+    "weakPrompt": "特定のブロックを確認してください",
+    "invalidResponse": "AIの回答が無効でした。もう一度お試しください。"
+  },
+  "error": {
+    "network": "ネットワークエラー",
+    "server": "サーバーエラー",
+    "unknown": "不明なエラー"
+  },
+  "settings": {
+    "title": "設定",
+    "showMistakes": "ミスを即時表示",
+    "autoRemoveNotes": "確定時に候補を自動削除",
+    "language": "言語"
+  }
+}

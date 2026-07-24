@@ -1,0 +1,33 @@
+{
+  "difficulty": { "title": "Choose Difficulty", "easy": "Easy", "medium": "Medium", "hard": "Hard" },
+  "game": {
+    "timer": "Time",
+    "mistakes": "Mistakes",
+    "hints": "Hints",
+    "reset": "Reset",
+    "resetConfirm": "Reset the current game?",
+    "undo": "Undo",
+    "redo": "Redo",
+    "hintButton": "Hint",
+    "memoMode": "Note",
+    "pause": "Pause",
+    "resume": "Resume",
+    "complete": "Solved!",
+    "completeStats": "Difficulty: {{difficulty}} / Time: {{time}} / Mistakes: {{mistakes}} / Hints: {{hints}}"
+  },
+  "hint": {
+    "weakPrompt": "Check the highlighted region",
+    "invalidResponse": "Invalid AI response. Please try again."
+  },
+  "error": {
+    "network": "Network error",
+    "server": "Server error",
+    "unknown": "Unknown error"
+  },
+  "settings": {
+    "title": "Settings",
+    "showMistakes": "Show mistakes instantly",
+    "autoRemoveNotes": "Auto-remove notes on placement",
+    "language": "Language"
+  }
+}

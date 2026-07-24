@@ -1,0 +1,33 @@
+{
+  "difficulty": { "title": "选择难度", "easy": "初级", "medium": "中级", "hard": "高级" },
+  "game": {
+    "timer": "已用时",
+    "mistakes": "错误",
+    "hints": "提示",
+    "reset": "重置",
+    "resetConfirm": "确定要重置吗？",
+    "undo": "撤销",
+    "redo": "重做",
+    "hintButton": "提示",
+    "memoMode": "记忆",
+    "pause": "暂停",
+    "resume": "继续",
+    "complete": "完成！",
+    "completeStats": "难度：{{difficulty}} / 用时：{{time}} / 错误：{{mistakes}} / 提示：{{hints}}"
+  },
+  "hint": {
+    "weakPrompt": "请检查特定的宫格",
+    "invalidResponse": "AI 回答无效，请重试。"
+  },
+  "error": {
+    "network": "网络错误",
+    "server": "服务器错误",
+    "unknown": "未知错误"
+  },
+  "settings": {
+    "title": "设置",
+    "showMistakes": "即时显示错误",
+    "autoRemoveNotes": "确定时自动清理候选",
+    "language": "语言"
+  }
+}
