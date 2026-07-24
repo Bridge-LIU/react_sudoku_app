@@ -50,6 +50,7 @@
 
 import { Board, Digit, NonEmptyDigit } from '@/types/domain';
 import { peersOf, findConflicts } from './board';
+import { isValidBoard } from './validate';
 
 export interface SolveOptions {
   readonly maxSolutions?: number;    // 默认 1
@@ -58,7 +59,9 @@ export interface SolveOptions {
 export function solve(input: Board, opts: SolveOptions = {}): Board[] {
   const max = opts.maxSolutions ?? 1;
 
-  // === 事前チェック：初期状態にコンフリクトがあれば即 [] を返す ===
+  // === 事前チェック：入力が不正なら即 [] を返す ===
+  // まず型・値域チェック：Mock/AI/Azure 由来の不正データを弾く（信用境界の一次防御）。
+  if (!isValidBoard(input)) return [];
   // 例：row 0 に 1 が 2 個ある盤面。findEmpty は 0 でない cell を触らないので、
   // このコンフリクトは backtrack 中に検出されず、無効な "解" を返してしまう。
   // それどころか、探索空間が爆発してハングする。

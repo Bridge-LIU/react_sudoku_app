@@ -16,6 +16,7 @@
  */
 import { Board, Digit, NonEmptyDigit, CellCoord } from '@/types/domain';
 import { isValidPlacement } from './board';
+import { isValidHint } from './validate';
 
 export type HintVerdict =
   | { ok: true }
@@ -25,11 +26,12 @@ export function verifyHint(
   puzzle: Board,
   current: Board,
   solution: Board,
-  hint: { cell: CellCoord; number: NonEmptyDigit | Digit }
+  hint: { cell: CellCoord; number: NonEmptyDigit }
 ): HintVerdict {
+  // 入力の値域チェック（NonEmptyDigit の型保証を runtime で担保）
+  // 不正な hint（NaN, 範囲外, 構造欠損など）は CONFLICT として扱う
+  if (!isValidHint(hint)) return { ok: false, reason: 'CONFLICT' };
   const idx = hint.cell.row * 9 + hint.cell.col;
-  // 出界视作 CONFLICT
-  if (idx < 0 || idx >= 81) return { ok: false, reason: 'CONFLICT' };
   // 初始格：出题时就给的数字，AI 不能"提示"这些
   if (puzzle[idx] !== 0) return { ok: false, reason: 'INITIAL_CELL' };
   // 玩家已经自己填了：AI 别来添乱
@@ -37,6 +39,6 @@ export function verifyHint(
   // AI 说的数字对不上正解：AI 错了
   if (solution[idx] !== hint.number) return { ok: false, reason: 'NOT_IN_SOLUTION' };
   // 最后一道保险：即使跟正解匹配，也检查一下当前盘面下这个放置是否合法
-  if (!isValidPlacement(current, idx, hint.number as Digit)) return { ok: false, reason: 'CONFLICT' };
+  if (!isValidPlacement(current, idx, hint.number)) return { ok: false, reason: 'CONFLICT' };
   return { ok: true };
 }

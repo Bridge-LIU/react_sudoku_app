@@ -14,4 +14,10 @@ describe('classifyByClueCount', () => {
   it('CLUE_RANGES exported', () => {
     expect(CLUE_RANGES.easy.min).toBe(36);
   });
+  it('throws on invalid input', () => {
+    expect(() => classifyByClueCount(NaN)).toThrow();
+    expect(() => classifyByClueCount(-1)).toThrow();
+    expect(() => classifyByClueCount(82)).toThrow();
+    expect(() => classifyByClueCount(3.5)).toThrow();
+  });
 });

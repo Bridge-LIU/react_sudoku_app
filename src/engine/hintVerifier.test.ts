@@ -32,4 +32,19 @@ describe('verifyHint', () => {
     const r = verifyHint(empty, empty, sol as Board, { cell: { row: 0, col: 0 }, number: 4 });
     expect(r).toEqual({ ok: true });
   });
+  it('rejects out-of-bounds cell', () => {
+    const sol = [...empty] as Digit[]; sol[0] = 4;
+    const r = verifyHint(empty, empty, sol as Board, { cell: { row: 9, col: 0 }, number: 4 as any });
+    expect(r).toEqual({ ok: false, reason: 'CONFLICT' });
+  });
+  it('rejects malformed hint (NaN)', () => {
+    const sol = [...empty] as Digit[]; sol[0] = 4;
+    const r = verifyHint(empty, empty, sol as Board, { cell: { row: NaN as any, col: 0 }, number: 4 as any });
+    expect(r).toEqual({ ok: false, reason: 'CONFLICT' });
+  });
+  it('rejects malformed hint (number 0)', () => {
+    const sol = [...empty] as Digit[]; sol[0] = 4;
+    const r = verifyHint(empty, empty, sol as Board, { cell: { row: 0, col: 0 }, number: 0 as any });
+    expect(r).toEqual({ ok: false, reason: 'CONFLICT' });
+  });
 });

@@ -30,4 +30,29 @@ describe('solver.solve', () => {
     // 空盘有几百万个解，但设置 maxSolutions=2 后应该 2 个就停
     expect(sols.length).toBe(2);
   });
+
+  it('backtracks correctly on mid-search dead end', () => {
+    // 一見矛盾なし、でも埋めていくうちに必ず矛盾に到達する盤面
+    // Row 0 に 7 個の 1..7 → 残り 2 マス埋めるには {8,9}
+    // Column 7 と 8 それぞれ既に 8 と 9 を持たせて矛盾を作る
+    const b = new Array(81).fill(0) as any;
+    // Row 0: [1,2,3,4,5,6,7,_,_]
+    for (let i = 0; i < 7; i++) b[i] = i + 1;
+    // Col 7 row 3 に 8 → row 0 col 7 に 8 不可
+    b[3 * 9 + 7] = 8;
+    b[3 * 9 + 8] = 9;
+    b[4 * 9 + 7] = 9;
+    b[4 * 9 + 8] = 8;
+    // 有効な initial だが row 0 の残り 2 マスを {8,9} で埋めようとすると必ず col 7/8 と衝突
+    const sols = solve(b as Board, { maxSolutions: 1 });
+    expect(sols.length).toBe(0);
+  });
+
+  it('rejects invalid input board', () => {
+    // 不正入力（配列でない / 長さ違い / 値域外）は空配列で返る
+    expect(solve(null as any).length).toBe(0);
+    expect(solve(new Array(80).fill(0) as any).length).toBe(0);
+    const bad = new Array(81).fill(0) as any; bad[0] = 10;
+    expect(solve(bad).length).toBe(0);
+  });
 });

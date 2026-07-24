@@ -65,6 +65,9 @@ const CLUE_TARGET: Record<Difficulty, number> = { easy: 40, medium: 32, hard: 26
 /**
  * 从满盘挖洞成题目。
  * 循环挖：随机选一格 → 擦掉 → 若剩下依然唯一解则接受、否则还原 → 直到达到目标 clue 数。
+ *
+ * ⚠️ 注意：clue が target まで削れないこともある（唯一解制約に阻まれた場合）。
+ * 呼び出し側は clueCount を必ず確認すること。difficulty 判定は clueCount 実際値ベース。
  */
 export function generatePuzzle(
   difficulty: Difficulty,

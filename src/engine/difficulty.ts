@@ -11,6 +11,11 @@ export const CLUE_RANGES = {
 } as const;
 
 export function classifyByClueCount(n: number): Difficulty {
+  // 不正入力ガード：NaN / 小数 / 範囲外は即エラー。
+  // silent に 'hard' 扱いすると呼び出し側のバグに気づけないので throw する。
+  if (!Number.isInteger(n) || n < 0 || n > 81) {
+    throw new Error(`classifyByClueCount: invalid clueCount ${n}`);
+  }
   if (n >= CLUE_RANGES.easy.min) return 'easy';
   if (n >= CLUE_RANGES.medium.min) return 'medium';
   return 'hard';
