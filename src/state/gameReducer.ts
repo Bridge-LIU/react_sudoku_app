@@ -17,6 +17,7 @@
  */
 
 import { Board, Difficulty, Digit, HintLevel, NonEmptyDigit, Notes } from '@/types/domain';
+import { peersOf } from '@/engine/board';
 
 const EMPTY: Board = new Array(81).fill(0);
 
@@ -168,6 +169,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       // 数値確定したらメモは消える
       const newNotes = { ...state.notes };
       delete newNotes[idx];
+      // autoRemoveNotes: 数値確定した時、同じ行/列/ブロックのメモから同じ数字を削除
+      if (state.settings.autoRemoveNotes && value !== 0) {
+        for (const peer of peersOf(idx)) {
+          const peerNotes = newNotes[peer];
+          if (peerNotes && peerNotes.includes(value as NonEmptyDigit)) {
+            const cleaned = peerNotes.filter(n => n !== value);
+            if (cleaned.length > 0) newNotes[peer] = cleaned;
+            else delete newNotes[peer];
+          }
+        }
+      }
       const complete = value !== 0 && isComplete(nextBoard, state.solution);
       return {
         ...state,
@@ -238,6 +250,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'HINT_RECEIVED': {
       const { index, number } = action.payload;
+      // 境界チェック：AI 由来なので信用しない（Engine の verifyHint と二重防御）
+      if (!Number.isInteger(index) || index < 0 || index > 80) {
+        return { ...state, pendingHint: null, lastHintRejection: { reason: 'BAD_INDEX' } };
+      }
+      if (!Number.isInteger(number) || number < 1 || number > 9) {
+        return { ...state, pendingHint: null, lastHintRejection: { reason: 'BAD_NUMBER' } };
+      }
       // 直前チェック：初期値セルや既に埋まっている所への hint は無視
       if (state.initialBoard[index] !== 0 || state.currentBoard[index] !== 0) {
         return { ...state, pendingHint: null };
@@ -264,8 +283,30 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'GAME_COMPLETED':
       return { ...state, status: 'complete' };
 
-    case 'LOAD_SAVED':
-      return { ...state, ...action.payload, status: 'playing' };
+    case 'LOAD_SAVED': {
+      // 明示的 whitelist：任意フィールド上書きを防ぐ（Security H1）
+      const p = action.payload;
+      return {
+        ...state,
+        puzzleId: p.puzzleId ?? state.puzzleId,
+        difficulty: p.difficulty ?? state.difficulty,
+        initialBoard: p.initialBoard ?? state.initialBoard,
+        currentBoard: p.currentBoard ?? state.currentBoard,
+        solution: p.solution ?? state.solution,
+        notes: p.notes ?? state.notes,
+        elapsedMs: p.elapsedMs ?? 0,
+        mistakes: p.mistakes ?? 0,
+        hintsUsed: p.hintsUsed ?? 0,
+        status: 'playing',
+        // history/future/selectedCell/mode/settings/pendingHint/lastHintRejection は保持しない
+        history: [],
+        future: [],
+        selectedCell: null,
+        mode: 'input',
+        pendingHint: null,
+        lastHintRejection: null,
+      };
+    }
 
     case 'CHANGE_LANGUAGE':
       return { ...state, settings: { ...state.settings, language: action.payload.language } };

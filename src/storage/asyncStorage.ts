@@ -20,11 +20,50 @@ export interface SavedSnapshot {
   initialBoard: number[];
   currentBoard: number[];
   solution: number[];
-  notes: Record<number, number[]>;
+  notes: Record<string, number[]>;
   elapsedMs: number;
   mistakes: number;
   hintsUsed: number;
   savedAt: string;
+}
+
+// スナップショット検証：AsyncStorage/IndexedDB は inspector から編集可能なので
+// 復元時にランタイム検証で信用境界を守る。zod 未導入なので手書き。
+function isValidBoardArray(v: unknown): v is number[] {
+  if (!Array.isArray(v) || v.length !== 81) return false;
+  for (const x of v) if (!Number.isInteger(x) || x < 0 || x > 9) return false;
+  return true;
+}
+
+function isValidDifficulty(v: unknown): v is Difficulty {
+  return v === 'easy' || v === 'medium' || v === 'hard';
+}
+
+function isValidNotes(v: unknown): v is Record<string, number[]> {
+  if (!v || typeof v !== 'object') return false;
+  for (const [k, arr] of Object.entries(v)) {
+    const idx = Number(k);
+    if (!Number.isInteger(idx) || idx < 0 || idx > 80) return false;
+    if (!Array.isArray(arr)) return false;
+    for (const n of arr) if (!Number.isInteger(n) || n < 1 || n > 9) return false;
+  }
+  return true;
+}
+
+export function isValidSnapshot(v: unknown): v is SavedSnapshot {
+  if (!v || typeof v !== 'object') return false;
+  const s = v as any;
+  if (typeof s.puzzleId !== 'string') return false;
+  if (!isValidDifficulty(s.difficulty)) return false;
+  if (!isValidBoardArray(s.initialBoard)) return false;
+  if (!isValidBoardArray(s.currentBoard)) return false;
+  if (!isValidBoardArray(s.solution)) return false;
+  if (!isValidNotes(s.notes)) return false;
+  if (!Number.isFinite(s.elapsedMs) || s.elapsedMs < 0) return false;
+  if (!Number.isInteger(s.mistakes) || s.mistakes < 0) return false;
+  if (!Number.isInteger(s.hintsUsed) || s.hintsUsed < 0) return false;
+  if (typeof s.savedAt !== 'string') return false;
+  return true;
 }
 
 export async function saveSnapshot(state: GameState): Promise<void> {
@@ -46,7 +85,21 @@ export async function saveSnapshot(state: GameState): Promise<void> {
 
 export async function loadSnapshot(d: Difficulty): Promise<SavedSnapshot | null> {
   const raw = await AsyncStorage.getItem(key(d));
-  return raw ? JSON.parse(raw) as SavedSnapshot : null;
+  if (!raw) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    // 破損データは self-heal：キー削除して null 返す
+    await AsyncStorage.removeItem(key(d));
+    return null;
+  }
+  if (!isValidSnapshot(parsed)) {
+    // 形式不正も同様に自己修復
+    await AsyncStorage.removeItem(key(d));
+    return null;
+  }
+  return parsed;
 }
 
 export async function clearSnapshot(d: Difficulty): Promise<void> {

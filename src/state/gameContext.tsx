@@ -36,8 +36,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
     const id = setInterval(() => {
       const now = Date.now();
-      const delta = now - lastTickRef.current;
+      const rawDelta = now - lastTickRef.current;
       lastTickRef.current = now;
+      // モバイルでバックグラウンド化すると setInterval が停止 → 復帰時に大きな delta が来る。
+      // 実プレイ時間として +30 分などは不自然なので 2 秒上限でクランプ。
+      const delta = Math.min(rawDelta, 2000);
       dispatch({ type: 'TICK', payload: { deltaMs: delta } });
     }, 1000);
     // クリーンアップ関数 — 次の effect 実行前 / unmount 前に呼ばれる

@@ -7,7 +7,7 @@ import path from 'path';
 // - resolve.alias: @/ → src/ を Vitest 側でも認識させる（tsconfig と揃える）
 export default defineConfig({
   test: {
-    include: ['src/engine/**/*.test.ts', 'src/mocks/**/*.test.ts', 'src/state/**/*.test.ts'],
+    include: ['src/engine/**/*.test.ts', 'src/mocks/**/*.test.ts', 'src/state/**/*.test.ts', 'src/storage/**/*.test.ts'],
     environment: 'node',
     pool: 'forks',
     coverage: { reporter: ['text', 'html'] },
