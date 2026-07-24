@@ -81,7 +81,8 @@ export function solve(input: Board, opts: SolveOptions = {}): Board[] {
    */
   function candidates(idx: number): NonEmptyDigit[] {
     const used = new Set<Digit>();
-    for (const p of peersOf(idx)) used.add(board[p]);
+    // p は 0..80、board は length 81 なので必ず定義済み
+    for (const p of peersOf(idx)) used.add(board[p]!);
     const out: NonEmptyDigit[] = [];
     for (let d = 1; d <= 9; d++) {
       if (!used.has(d as Digit)) out.push(d as NonEmptyDigit);

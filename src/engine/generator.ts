@@ -29,7 +29,12 @@ function shuffle<T>(arr: readonly T[], rng: RNG): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    // noUncheckedIndexedAccess 対応：i と j は 0..a.length-1 なので必ず定義済み。
+    // ただし TS はそれを知らないので ! で型を絞る。
+    const ai = a[i]!;
+    const aj = a[j]!;
+    a[i] = aj;
+    a[j] = ai;
   }
   return a;
 }
@@ -46,7 +51,8 @@ export function generateCompleteBoard(rng: RNG = defaultRng): Board {
     if (board[idx] !== 0) return fill(idx + 1);
     const digits = shuffle([1,2,3,4,5,6,7,8,9], rng) as NonEmptyDigit[];
     const used = new Set<Digit>();
-    for (const p of peersOf(idx)) used.add(board[p]);
+    // p は 0..80、board は length 81 で確実に定義済み（! で narrow）
+    for (const p of peersOf(idx)) used.add(board[p]!);
     for (const d of digits) {
       if (used.has(d as Digit)) continue;
       board[idx] = d;
@@ -80,7 +86,7 @@ export function generatePuzzle(
   let clues = 81;
   for (const i of indices) {
     if (clues <= target) break;
-    const saved = puzzle[i];
+    const saved = puzzle[i]!; // i は 0..80、確実に定義済み
     puzzle[i] = 0;
     if (hasUniqueSolution(puzzle as Board)) {
       clues--;

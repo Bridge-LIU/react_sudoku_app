@@ -15,7 +15,7 @@ describe('solver.solve', () => {
   it('returns 1 solution for a known unique puzzle', () => {
     const sols = solve(KNOWN_UNIQUE, { maxSolutions: 2 });
     expect(sols.length).toBe(1);
-    expect(sols[0].every(v => v >= 1 && v <= 9)).toBe(true);
+    expect(sols[0]!.every(v => v >= 1 && v <= 9)).toBe(true);
   });
 
   it('returns 0 solutions for unsolvable puzzle', () => {
