@@ -49,7 +49,7 @@
  */
 
 import { Board, Digit, NonEmptyDigit } from '@/types/domain';
-import { peersOf } from './board';
+import { peersOf, findConflicts } from './board';
 
 export interface SolveOptions {
   readonly maxSolutions?: number;    // 默认 1
@@ -57,6 +57,13 @@ export interface SolveOptions {
 
 export function solve(input: Board, opts: SolveOptions = {}): Board[] {
   const max = opts.maxSolutions ?? 1;
+
+  // === 事前チェック：初期状態にコンフリクトがあれば即 [] を返す ===
+  // 例：row 0 に 1 が 2 個ある盤面。findEmpty は 0 でない cell を触らないので、
+  // このコンフリクトは backtrack 中に検出されず、無効な "解" を返してしまう。
+  // それどころか、探索空間が爆発してハングする。
+  // ここで最初に findConflicts で弾く。
+  if (findConflicts(input).size > 0) return [];
 
   // === readonly 数组的复制小技巧 ===
   // input 类型是 readonly Digit[]，不能直接 push/改元素。

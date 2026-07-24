@@ -5,6 +5,9 @@ dist/
 web-build/
 *.log
 
+# Test coverage
+coverage/
+
 # TypeScript
 *.tsbuildinfo
 
