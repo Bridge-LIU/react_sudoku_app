@@ -1,0 +1,72 @@
+# Azure Static Web Apps: build Expo web bundle and deploy on push to main.
+#
+# 必要な GitHub secret:
+#   AZURE_STATIC_WEB_APPS_API_TOKEN  — Azure Portal で SWA 作成時に発行される Deployment Token
+#
+# ローカル手元テスト:
+#   npm run export:web  で dist/ が生成されることを確認してから push。
+
+name: Deploy to Azure Static Web Apps
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+
+jobs:
+  build_and_deploy:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    name: Build and Deploy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          lfs: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Run engine + mock contract tests
+        run: npm run test:engine
+
+      - name: Build Expo Web bundle
+        run: npm run export:web
+
+      - name: Deploy to Azure Static Web Apps
+        id: deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          # Expo export の出力先
+          app_location: 'dist'
+          # API は Mock (client 側 in-process) なので Azure Functions は無し
+          api_location: ''
+          # 既にビルド済なので SWA 側で追加ビルドしない
+          skip_app_build: true
+          output_location: ''
+
+  close_pr:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request
+    steps:
+      - name: Close PR deployment
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: 'close'
