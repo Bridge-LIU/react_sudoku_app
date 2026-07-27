@@ -22,8 +22,11 @@ import { CompleteDialog } from '@/ui/CompleteDialog';
 import { useGameState, useGameDispatch } from '@/state/gameContext';
 import { getHighlights } from '@/state/selectors';
 import { findConflicts } from '@/engine/board';
-import { generatePuzzle } from '@/engine/generator';
+import { verifyHint } from '@/engine/hintVerifier';
 import { saveSnapshot, loadSnapshot, clearSnapshot } from '@/storage/asyncStorage';
+import { generatePuzzle as apiGeneratePuzzle } from '@/api/puzzles';
+import { requestHint as apiRequestHint } from '@/api/hints';
+import { HttpError, TimeoutError, SchemaError, NetworkError } from '@/api/errors';
 import { Board as BoardData, Difficulty, NonEmptyDigit, Notes } from '@/types/domain';
 import { colors, spacing } from '@/ui/theme';
 
@@ -34,13 +37,6 @@ function isValidDifficulty(v: string | undefined): v is Difficulty {
 
 // 冲突無効時に返す空 Set。毎回 new Set() を作らず参照を安定させて memo が効くように。
 const EMPTY_CONFLICTS: ReadonlySet<number> = new Set();
-
-// puzzleId 用の乱数サフィックス：Date.now() だけだと 1ms 未満での二重マウント時に衝突する。
-function makePuzzleId(): string {
-  const cryptoObj = (globalThis as unknown as { crypto?: { randomUUID?: () => string } }).crypto;
-  if (cryptoObj?.randomUUID) return `local-${cryptoObj.randomUUID()}`;
-  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 // キーボード操作を無視すべき DOM 要素かどうか（テキスト入力へのキー入力を潰さないため）
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -116,16 +112,16 @@ export default function PlayScreen() {
           });
           return;
         }
-        // 保存なし → 新規生成
-        const { puzzle, solution } = generatePuzzle(validDifficulty);
+        // 保存なし → API 経由で新規生成 (USE_MOCKS=true の間は in-process mock が返す)
+        const puzzleObj = await apiGeneratePuzzle(validDifficulty);
         if (cancelled) return;
         dispatch({
           type: 'START_GAME',
           payload: {
-            puzzleId: makePuzzleId(),
+            puzzleId: puzzleObj.id,
             difficulty: validDifficulty,
-            puzzle,
-            solution,
+            puzzle: puzzleObj.puzzle as BoardData,
+            solution: puzzleObj.solution as BoardData,
           },
         });
       } catch (err) {
@@ -178,8 +174,12 @@ export default function PlayScreen() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []);
 
-  // (silent test hook — no console output)
+  // (silent test hook — dev bundle only, guarded by __DEV__)
   useEffect(() => {
+    // React Native の __DEV__ グローバル。prod build では false になり、以下のコードは
+    // dead-code elimination で bundle から消える。
+    const isDev = typeof __DEV__ !== 'undefined' && __DEV__;
+    if (!isDev) return;
     const g = globalThis as unknown as Record<string, unknown>;
     g.__sudokuWin = () => {
       dispatch({ type: 'CHEAT_COMPLETE' });
@@ -254,6 +254,79 @@ export default function PlayScreen() {
     })();
   };
 
+  // Hint 要求フロー: BAF 二重検証 + 新鮮 state で verify
+  //   1. api/hints で AI (Mock) 返答を取得 + zod schema 検証 (httpClient 内)
+  //   2. engine.verifyHint で「そのセル+その数字が本当に正解か」を検証
+  //      ※ await 中にユーザーが操作してる可能性があるので stateRef.current で新鮮な state を使う (§8.2 準拠)
+  //   両方通過して初めて盤面に書く。REJECT 理由は state.lastHintRejection に残す。
+  const onHint = () => {
+    if (state.pendingHint || state.status !== 'playing') return;
+    if (!state.puzzleId || !state.difficulty) return;
+    // click 時の puzzleId/difficulty は narrow (! 演算子を避けるため)
+    const puzzleId = state.puzzleId;
+    const difficulty = state.difficulty;
+    const requestBoard = [...state.currentBoard];   // API 送信用の凍結スナップショット
+
+    // 選択中のセルが空マスなら hint はそのセルを優先させる (「ここで詰まってる」の合図)。
+    const focusCell = (() => {
+      const idx = state.selectedCell;
+      if (idx === null) return undefined;
+      if (state.currentBoard[idx] !== 0) return undefined;
+      return { row: Math.floor(idx / 9), col: idx % 9 };
+    })();
+
+    dispatch({ type: 'REQUEST_HINT_START', payload: { level: 'strong' } });
+
+    void (async () => {
+      try {
+        const hint = await apiRequestHint({
+          puzzleId,
+          currentBoard: requestBoard,
+          level: 'strong',
+          difficulty,
+          focusCell,
+        });
+        if (!hint.cell || hint.number === undefined) {
+          dispatch({ type: 'HINT_REJECTED', payload: { reason: 'INCOMPLETE_RESPONSE' } });
+          return;
+        }
+        // 【重要】await 後は必ず新鮮な state で verify する (stale board で判定しない)
+        // ユーザーが hint 要求後に別のセルを埋めた場合、その変化を反映した盤面で正しさを判断。
+        const fresh = stateRef.current;
+        // ゲーム状態自体が変わっている (完成 / リセット / 難易度変更) → hint を破棄
+        if (fresh.status !== 'playing' || fresh.puzzleId !== puzzleId) {
+          dispatch({ type: 'HINT_REJECTED', payload: { reason: 'GAME_STATE_CHANGED' } });
+          return;
+        }
+        const verdict = verifyHint(fresh.initialBoard, fresh.currentBoard, fresh.solution, {
+          cell: hint.cell,
+          number: hint.number as NonEmptyDigit,
+        });
+        if (verdict.ok) {
+          dispatch({
+            type: 'HINT_RECEIVED',
+            payload: {
+              index: hint.cell.row * 9 + hint.cell.col,
+              number: hint.number as NonEmptyDigit,
+            },
+          });
+        } else {
+          dispatch({ type: 'HINT_REJECTED', payload: { reason: verdict.reason } });
+        }
+      } catch (err) {
+        // エラー種別で reason を区別 (§12.1 ユーザー向け vs 内部ログの分離)
+        const reason =
+          err instanceof SchemaError ? 'INVALID_AI_RESPONSE'
+          : err instanceof TimeoutError ? 'TIMEOUT'
+          : err instanceof HttpError ? `HTTP_${err.status}`
+          : err instanceof NetworkError ? 'NETWORK'
+          : 'REQUEST_FAILED';
+        console.warn('[hint]', reason, err instanceof Error ? err.message : String(err));
+        dispatch({ type: 'HINT_REJECTED', payload: { reason } });
+      }
+    })();
+  };
+
   if (bootstrapping || state.status === 'idle' || state.status === 'loading') {
     return (
       <View style={[styles.container, styles.center]}>
@@ -285,12 +358,21 @@ export default function PlayScreen() {
       <Toolbar
         onUndo={() => dispatch({ type: 'UNDO' })}
         onRedo={() => dispatch({ type: 'REDO' })}
-        onHint={() => {}}
+        onHint={onHint}
         onReset={() => dispatch({ type: 'RESET_CONFIRMED' })}
         canUndo={state.history.length > 0}
         canRedo={state.future.length > 0}
-        canHint={false}
+        // pendingHint 中は連打防止で無効化
+        canHint={state.status === 'playing' && !state.pendingHint}
       />
+      {/* Hint 拒否理由の簡易表示。lastHintRejection が set された時のみ */}
+      {state.lastHintRejection && (
+        <View style={styles.hintRejection}>
+          <Text style={styles.hintRejectionText}>
+            AI hint rejected: {state.lastHintRejection.reason}
+          </Text>
+        </View>
+      )}
       <CompleteDialog
         visible={state.status === 'complete'}
         difficulty={state.difficulty ?? 'easy'}
@@ -311,4 +393,11 @@ export default function PlayScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', paddingTop: spacing.lg, gap: spacing.md },
   center: { justifyContent: 'center' },
+  hintRejection: {
+    backgroundColor: colors.cellConflict,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 4,
+  },
+  hintRejectionText: { color: colors.textConflict, fontSize: 12 },
 });

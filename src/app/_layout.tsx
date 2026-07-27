@@ -12,6 +12,12 @@ import { Platform } from 'react-native';
 import '@/i18n';   // 副作用初始化 i18next，见 src/i18n/index.ts
 import { GameProvider } from '@/state/gameContext';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
+import { installMocks, USE_MOCKS } from '@/mocks';
+
+// Mock 層をアプリ起動時に一度だけ登録する (USE_MOCKS=true の時に有効化)。
+// モジュールロード時 (import 時) に副作用実行 = HMR / Fast Refresh でも 1 度きり
+// (installMocks 内部の flag で多重登録防止)。
+if (USE_MOCKS) installMocks();
 
 // エラーをログするヘルパー：本番の共有デバイスでも安全な情報のみ残す。
 // e.error / e.reason 全体を出すとスタックにファイルパスや今後の AI プロンプト内容が漏れる可能性。

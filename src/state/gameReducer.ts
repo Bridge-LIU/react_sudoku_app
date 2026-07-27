@@ -324,17 +324,32 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       // これにより PlayScreen の生成 effect が再走してパズルを新規生成する。
       return { ...initialState, settings: state.settings };
 
-    case 'CHEAT_COMPLETE':
-      // デバッグ秘籍：進行中のゲームがあれば solution で埋めて complete に。
+    case 'CHEAT_COMPLETE': {
+      // デバッグ秘籍：進行中の空マスを最後の 1 つだけ残して埋める (自分で完成の瞬間を体験できる形)。
       if (state.status !== 'playing' && state.status !== 'paused') return state;
+      // 現在空のセルを列挙
+      const emptyIndices: number[] = [];
+      for (let i = 0; i < 81; i++) {
+        if (state.currentBoard[i] === 0) emptyIndices.push(i);
+      }
+      if (emptyIndices.length === 0) return state;   // 既に埋まってる
+      // 最後の 1 マスをランダムに選んで残す
+      const keepIdx = emptyIndices[Math.floor(Math.random() * emptyIndices.length)]!;
+      const nextBoard: Digit[] = [...state.currentBoard];
+      for (const i of emptyIndices) {
+        if (i === keepIdx) continue;
+        nextBoard[i] = state.solution[i]!;
+      }
       return {
         ...state,
-        currentBoard: state.solution,
+        // readonly Digit[] は Digit[] から assignable なので cast 不要
+        currentBoard: nextBoard,
         notes: {},
         history: [],
         future: [],
-        status: 'complete',
+        selectedCell: keepIdx,   // 残されたマスにカーソルを合わせておく
       };
+    }
 
     default: return state;
   }
