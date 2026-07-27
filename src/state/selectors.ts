@@ -14,7 +14,8 @@ export function getHighlights(
   const sameLine = new Set<number>(peersOf(selected));
   const val = board[selected];
   const sameNumber = new Set<number>();
-  if (val !== 0) {
+  // noUncheckedIndexedAccess: val は Digit | undefined。undefined は範囲外（想定外だが防御的に扱う）
+  if (val !== undefined && val !== 0) {
     for (let i = 0; i < 81; i++) if (board[i] === val) sameNumber.add(i);
   }
   return { sameLine, sameNumber };

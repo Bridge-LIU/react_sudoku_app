@@ -168,4 +168,24 @@ describe('gameReducer', () => {
     expect(s.notes[0]).toBeUndefined();
     expect(s.notes[1]).toBeUndefined();
   });
+
+  it('RESTART_REQUESTED resets to idle while keeping settings', () => {
+    // 完成状態 + カスタム設定 から出発
+    const withCustomSettings = {
+      ...initialState,
+      status: 'complete' as const,
+      settings: { showMistakesImmediately: false, autoRemoveNotes: false, language: 'zh' as const },
+      elapsedMs: 12345,
+      mistakes: 3,
+      hintsUsed: 2,
+    };
+    const s = gameReducer(withCustomSettings, { type: 'RESTART_REQUESTED' });
+    // 状態は初期化されるが settings は保持
+    expect(s.status).toBe('idle');
+    expect(s.difficulty).toBeNull();
+    expect(s.elapsedMs).toBe(0);
+    expect(s.mistakes).toBe(0);
+    expect(s.hintsUsed).toBe(0);
+    expect(s.settings).toEqual(withCustomSettings.settings);
+  });
 });

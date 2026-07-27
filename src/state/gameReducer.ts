@@ -95,7 +95,9 @@ export type GameAction =
   | { type: 'GAME_COMPLETED' }
   | { type: 'LOAD_SAVED'; payload: Partial<GameState> }
   | { type: 'CHANGE_LANGUAGE'; payload: { language: 'ja' | 'zh' | 'en' } }
-  | { type: 'TOGGLE_SETTING'; payload: { key: 'showMistakesImmediately' | 'autoRemoveNotes' } };
+  | { type: 'TOGGLE_SETTING'; payload: { key: 'showMistakesImmediately' | 'autoRemoveNotes' } }
+  | { type: 'RESTART_REQUESTED' }
+  | { type: 'CHEAT_COMPLETE' };   // 開発デバッグ用：盤面を solution で埋めて完成状態にする
 
 const HISTORY_LIMIT = 100;
 
@@ -315,6 +317,23 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         settings: { ...state.settings, [action.payload.key]: !state.settings[action.payload.key] },
+      };
+
+    case 'RESTART_REQUESTED':
+      // 完成後の「もう一度」/「難易度変更」で使う。設定は引き継いで idle に戻す。
+      // これにより PlayScreen の生成 effect が再走してパズルを新規生成する。
+      return { ...initialState, settings: state.settings };
+
+    case 'CHEAT_COMPLETE':
+      // デバッグ秘籍：進行中のゲームがあれば solution で埋めて complete に。
+      if (state.status !== 'playing' && state.status !== 'paused') return state;
+      return {
+        ...state,
+        currentBoard: state.solution,
+        notes: {},
+        history: [],
+        future: [],
+        status: 'complete',
       };
 
     default: return state;
