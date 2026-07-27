@@ -14,10 +14,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Platform, ActivityIndicator, Text } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Board } from '@/ui/Board';
 import { NumberPad } from '@/ui/NumberPad';
 import { Toolbar } from '@/ui/Toolbar';
-import { Timer } from '@/ui/Timer';
+import { StatsBar } from '@/ui/StatsBar';
 import { CompleteDialog } from '@/ui/CompleteDialog';
 import { useGameState, useGameDispatch } from '@/state/gameContext';
 import { getHighlights } from '@/state/selectors';
@@ -46,11 +47,29 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return el.isContentEditable === true;
 }
 
+// Hint 拒否理由 → 翻訳 key マップ (未知の理由は unknownError にフォールバック)
+function hintRejectionKey(reason: string): string {
+  switch (reason) {
+    case 'NO_HINT_AVAILABLE':
+    case 'INCOMPLETE_RESPONSE':
+      return 'hint.noHintAvailable';
+    case 'TIMEOUT':
+      return 'hint.timeout';
+    case 'NETWORK':
+      return 'hint.network';
+    case 'INVALID_AI_RESPONSE':
+      return 'hint.invalidResponse';
+    default:
+      return 'hint.unknownError';
+  }
+}
+
 export default function PlayScreen() {
   const params = useLocalSearchParams<{ difficulty?: string }>();
   const state = useGameState();
   const dispatch = useGameDispatch();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // URL 不正時は home に戻す
   const rawDifficulty = params.difficulty;
@@ -287,29 +306,43 @@ export default function PlayScreen() {
           focusCell,
         });
         if (!hint.cell || hint.number === undefined) {
-          dispatch({ type: 'HINT_REJECTED', payload: { reason: 'INCOMPLETE_RESPONSE' } });
+          dispatch({ type: 'HINT_REJECTED', payload: { reason: 'NO_HINT_AVAILABLE' } });
           return;
         }
         // 【重要】await 後は必ず新鮮な state で verify する (stale board で判定しない)
         // ユーザーが hint 要求後に別のセルを埋めた場合、その変化を反映した盤面で正しさを判断。
         const fresh = stateRef.current;
-        // ゲーム状態自体が変わっている (完成 / リセット / 難易度変更) → hint を破棄
         if (fresh.status !== 'playing' || fresh.puzzleId !== puzzleId) {
           dispatch({ type: 'HINT_REJECTED', payload: { reason: 'GAME_STATE_CHANGED' } });
           return;
         }
+        const index = hint.cell.row * 9 + hint.cell.col;
+        const number = hint.number as NonEmptyDigit;
+
+        // isCorrection = true (mock が「間違ってるセルを訂正せよ」と判断) → 訂正フロー
+        // BAF 二重検証: 正しさは verify し、初期セルでないかも確認、そのうえで上書き。
+        if (hint.isCorrection) {
+          // 初期セルへの訂正は絶対に拒否 (仕様書 §8.2)
+          if (fresh.initialBoard[index] !== 0) {
+            dispatch({ type: 'HINT_REJECTED', payload: { reason: 'INITIAL_CELL' } });
+            return;
+          }
+          // number が solution と一致するか engine で確認
+          if (fresh.solution[index] !== number) {
+            dispatch({ type: 'HINT_REJECTED', payload: { reason: 'NOT_IN_SOLUTION' } });
+            return;
+          }
+          dispatch({ type: 'HINT_CORRECTION_RECEIVED', payload: { index, number } });
+          return;
+        }
+
+        // 通常の空マス hint: verifyHint で厳密検証
         const verdict = verifyHint(fresh.initialBoard, fresh.currentBoard, fresh.solution, {
           cell: hint.cell,
-          number: hint.number as NonEmptyDigit,
+          number,
         });
         if (verdict.ok) {
-          dispatch({
-            type: 'HINT_RECEIVED',
-            payload: {
-              index: hint.cell.row * 9 + hint.cell.col,
-              number: hint.number as NonEmptyDigit,
-            },
-          });
+          dispatch({ type: 'HINT_RECEIVED', payload: { index, number } });
         } else {
           dispatch({ type: 'HINT_REJECTED', payload: { reason: verdict.reason } });
         }
@@ -338,7 +371,12 @@ export default function PlayScreen() {
 
   return (
     <View style={styles.container}>
-      <Timer elapsedMs={state.elapsedMs} />
+      <StatsBar
+        difficulty={state.difficulty}
+        elapsedMs={state.elapsedMs}
+        mistakes={state.mistakes}
+        hintsUsed={state.hintsUsed}
+      />
       <Board
         board={state.currentBoard}
         initialBoard={state.initialBoard}
@@ -365,11 +403,11 @@ export default function PlayScreen() {
         // pendingHint 中は連打防止で無効化
         canHint={state.status === 'playing' && !state.pendingHint}
       />
-      {/* Hint 拒否理由の簡易表示。lastHintRejection が set された時のみ */}
+      {/* Hint 拒否理由の簡易表示 (i18n 化)。原生 reason は隠して友好的な文言のみ表示。 */}
       {state.lastHintRejection && (
         <View style={styles.hintRejection}>
           <Text style={styles.hintRejectionText}>
-            AI hint rejected: {state.lastHintRejection.reason}
+            {t(hintRejectionKey(state.lastHintRejection.reason))}
           </Text>
         </View>
       )}
@@ -391,7 +429,15 @@ export default function PlayScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', paddingTop: spacing.lg, gap: spacing.md },
+  // 縦方向センタリング (Android の縦長画面で上寄りにならないよう) + 上下パディング
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    gap: spacing.md,
+  },
   center: { justifyContent: 'center' },
   hintRejection: {
     backgroundColor: colors.cellConflict,

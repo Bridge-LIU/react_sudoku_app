@@ -5,7 +5,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Cell } from './Cell';
 import { Board as BoardData, Digit, Notes } from '@/types/domain';
-import { colors } from './theme';
+import { colors, bento } from './theme';
 
 export interface BoardProps {
   board: BoardData;
@@ -47,7 +47,15 @@ export function Board(props: BoardProps) {
 }
 
 const styles = StyleSheet.create({
-  board: { borderWidth: 2, borderColor: colors.gridLineBold, backgroundColor: colors.boardBg },
+  // Bento: 2px 黒枠 + 12px rounded + offset shadow
+  board: {
+    borderWidth: bento.borderWidth,
+    borderColor: colors.gridLineBold,
+    backgroundColor: colors.boardBg,
+    borderRadius: bento.radius.lg,
+    overflow: 'hidden',
+    ...bento.offsetShadow,
+  },
   row: { flexDirection: 'row' },
   boldBottom: { borderBottomWidth: 2, borderBottomColor: colors.gridLineBold },
   boldRight: { borderRightWidth: 2, borderRightColor: colors.gridLineBold },

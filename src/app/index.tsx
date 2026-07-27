@@ -1,16 +1,35 @@
 // 首页 / 路径。文件路径决定路由：src/app/index.tsx → 应用打开时的首屏。
+// 右上角に言語切替 pill、中央に難易度選択。
 
 import React from 'react';
 import { useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { View, StyleSheet, Platform, StatusBar } from 'react-native';
 import { DifficultyPicker } from '@/ui/DifficultyPicker';
-import { colors } from '@/ui/theme';
+import { LanguageSwitch } from '@/ui/LanguageSwitch';
+import { colors, spacing } from '@/ui/theme';
 
 export default function HomeScreen() {
-  const router = useRouter(); // 对比 Vue: useRouter() 也一样
+  const router = useRouter();
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={styles.container}>
+      {/* 右上角の言語切替。position absolute で他レイアウトに影響させない。 */}
+      <View style={styles.langSwitchWrap}>
+        <LanguageSwitch />
+      </View>
       <DifficultyPicker onPick={d => router.push(`/play/${d}`)} />
     </View>
   );
 }
+
+// Android の StatusBar 高さ (ノッチ分)。iOS/Web は safe area 側で吸収されるので 0。
+const statusBarInset = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
+  langSwitchWrap: {
+    position: 'absolute',
+    top: spacing.md + statusBarInset,
+    right: spacing.md,
+    zIndex: 10,
+  },
+});

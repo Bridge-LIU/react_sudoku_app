@@ -53,7 +53,30 @@ export function handleRequestHint(rawBody: unknown): { status: number; body: unk
   // snapshot 復元経由でも動くようにこの設計にする。
   const solutions = solve(currentBoard as Board, { maxSolutions: 1 });
   if (solutions.length === 0) {
-    // 現在の盤面から解ける状態でない (矛盾状態)。空ヒントで返す。
+    // 盤面が矛盾している → ユーザーがどこかに間違った数字を入れた。
+    // 訂正 hint: 各埋まってるセルを 1 つずつ空にして solve、成功したセルが「間違ってる可能性」。
+    // そのセルに「正しい数字」を入れるよう提案 (isCorrection=true で client 側は上書き扱い)。
+    const correction = findWrongCell(currentBoard as Board);
+    if (correction) {
+      const { idx, correctNumber } = correction;
+      const row = Math.floor(idx / 9);
+      const col = idx % 9;
+      return {
+        status: 200,
+        body: {
+          level,
+          cell: { row, col },
+          number: correctNumber,
+          isCorrection: true,
+          explanation_i18n: {
+            ja: `${row + 1}行${col + 1}列に誤りがあります。正しくは ${correctNumber} です。`,
+            zh: `第${row + 1}行第${col + 1}列有错误。正确的数字是 ${correctNumber}。`,
+            en: `Wrong entry at row ${row + 1}, col ${col + 1}. Correct value: ${correctNumber}.`,
+          },
+        } as HintResponse & { isCorrection: true },
+      };
+    }
+    // 1 個のセル変更では直せない (複数間違いあり) → 空 hint
     return { status: 200, body: buildEmptyHint(level) };
   }
   const solution = solutions[0]!;
@@ -96,6 +119,27 @@ export function handleRequestHint(rawBody: unknown): { status: number; body: unk
     explanation_i18n: buildExplanation(pickRow, pickCol, injectedNumber, level),
   };
   return { status: 200, body: response };
+}
+
+/**
+ * 矛盾盤面から「間違ってる可能性が高いセル」を 1 つ探す。
+ * 各埋まってるセルを 1 つずつ空にして solve を試み、成功したらその中の正解を返す。
+ * O(81 × solve 時間) だが盤面 81 セル程度なので許容範囲。
+ */
+function findWrongCell(board: Board): { idx: number; correctNumber: number } | null {
+  for (let i = 0; i < 81; i++) {
+    if (board[i] === 0) continue;
+    const tryBoard = [...board] as Board;
+    (tryBoard as number[])[i] = 0;
+    const sols = solve(tryBoard, { maxSolutions: 1 });
+    if (sols.length > 0) {
+      const correctNumber = sols[0]![i]!;
+      if (correctNumber !== board[i]) {
+        return { idx: i, correctNumber };
+      }
+    }
+  }
+  return null;
 }
 
 // weak level で cell/number 省略パターン

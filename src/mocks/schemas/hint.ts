@@ -33,10 +33,12 @@ export const hintRequestSchema = z.object({
 
 // レスポンス：level に応じて cell/number は optional
 // (weak: 説明のみ, medium: cell 情報のみ, strong: cell + number)
+// isCorrection = true の時は「既に埋まってるセルを訂正せよ」の意味 (client 側で上書き扱い)。
 export const hintResponseSchema = z.object({
   level: hintLevelSchema,
   cell: cellCoordSchema.optional(),
   number: z.number().int().min(1).max(9).optional(),
+  isCorrection: z.boolean().optional(),
   explanation_i18n: z.object({
     ja: z.string(),
     zh: z.string(),

@@ -91,6 +91,7 @@ export type GameAction =
   | { type: 'RESET_CONFIRMED' }
   | { type: 'REQUEST_HINT_START'; payload: { level: HintLevel } }
   | { type: 'HINT_RECEIVED'; payload: { index: number; number: NonEmptyDigit } }
+  | { type: 'HINT_CORRECTION_RECEIVED'; payload: { index: number; number: NonEmptyDigit } }
   | { type: 'HINT_REJECTED'; payload: { reason: string } }
   | { type: 'GAME_COMPLETED' }
   | { type: 'LOAD_SAVED'; payload: Partial<GameState> }
@@ -273,6 +274,37 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         pendingHint: null,
         history: [...state.history, {
           index, prevValue: prev, nextValue: number as Digit, prevNotes: state.notes[index] ?? [], nextNotes: [],
+        }].slice(-HISTORY_LIMIT),
+        future: [],
+        status: complete ? 'complete' : state.status,
+      };
+    }
+
+    case 'HINT_CORRECTION_RECEIVED': {
+      // 訂正 hint：既に埋まってるセル (ユーザーの間違い) を正解で上書きする。
+      // HINT_RECEIVED との違い: current[idx] !== 0 でも通す (むしろその前提)。
+      // 初期セルは絶対に触らない (仕様書要求)。
+      const { index, number } = action.payload;
+      if (!Number.isInteger(index) || index < 0 || index > 80) {
+        return { ...state, pendingHint: null, lastHintRejection: { reason: 'BAD_INDEX' } };
+      }
+      if (!Number.isInteger(number) || number < 1 || number > 9) {
+        return { ...state, pendingHint: null, lastHintRejection: { reason: 'BAD_NUMBER' } };
+      }
+      if (state.initialBoard[index] !== 0) {
+        return { ...state, pendingHint: null };
+      }
+      const prev = state.currentBoard[index] ?? 0;
+      const nextBoard = writeAt(state.currentBoard, index, number as Digit);
+      const complete = isComplete(nextBoard, state.solution);
+      return {
+        ...state,
+        currentBoard: nextBoard,
+        hintsUsed: state.hintsUsed + 1,
+        pendingHint: null,
+        history: [...state.history, {
+          index, prevValue: prev, nextValue: number as Digit,
+          prevNotes: state.notes[index] ?? [], nextNotes: [],
         }].slice(-HISTORY_LIMIT),
         future: [],
         status: complete ? 'complete' : state.status,

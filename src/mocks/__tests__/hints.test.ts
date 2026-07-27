@@ -36,9 +36,9 @@ describe('hints handler', () => {
     expect(parsed.success).toBe(true);
   }, 20000);
 
-  it('returns empty hint when currentBoard is unsolvable', () => {
+  it('unsolvable board with single wrong cell returns correction hint', () => {
     _setHintErrorRate(0);
-    // 矛盾盤面 (同じ行に 1 が 2 個)
+    // 矛盾盤面 (同じ行に 1 が 2 個)。1 セル訂正で解ける想定。
     const bad = new Array(81).fill(0) as number[];
     bad[0] = 1; bad[1] = 1;
     const res = handleRequestHint({
@@ -51,9 +51,14 @@ describe('hints handler', () => {
     const parsed = hintResponseSchema.safeParse(res.body);
     expect(parsed.success).toBe(true);
     if (parsed.success) {
-      // 空セル無し扱いで、cell/number は無し
-      expect(parsed.data.cell).toBeUndefined();
-      expect(parsed.data.number).toBeUndefined();
+      // 訂正 hint が返る：isCorrection=true, cell + number 有り
+      expect(parsed.data.isCorrection).toBe(true);
+      expect(parsed.data.cell).toBeDefined();
+      expect(parsed.data.number).toBeGreaterThanOrEqual(1);
+      expect(parsed.data.number).toBeLessThanOrEqual(9);
+      // 対象セルは 0 or 1 のいずれか (矛盾している 2 セルのどちらか)
+      const idx = parsed.data.cell!.row * 9 + parsed.data.cell!.col;
+      expect([0, 1]).toContain(idx);
     }
   });
 

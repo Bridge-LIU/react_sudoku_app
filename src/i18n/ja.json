@@ -1,5 +1,5 @@
 {
-  "difficulty": { "title": "難易度を選択", "easy": "初級", "medium": "中級", "hard": "上級" },
+  "difficulty": { "title": "難易度を選択", "label": "難易度", "easy": "初級", "medium": "中級", "hard": "上級" },
   "game": {
     "timer": "経過時間",
     "mistakes": "ミス",
@@ -10,14 +10,22 @@
     "redo": "やり直し",
     "hintButton": "ヒント",
     "memoMode": "メモ",
+    "delete": "削除",
     "pause": "一時停止",
     "resume": "再開",
     "complete": "完成！",
-    "completeStats": "難易度: {{difficulty}} / 用時: {{time}} / ミス: {{mistakes}} / ヒント: {{hints}}"
+    "completeStats": "難易度: {{difficulty}} / 用時: {{time}} / ミス: {{mistakes}} / ヒント: {{hints}}",
+    "playAgain": "もう一度",
+    "changeDifficulty": "難易度を変更",
+    "close": "閉じる"
   },
   "hint": {
     "weakPrompt": "特定のブロックを確認してください",
-    "invalidResponse": "AIの回答が無効でした。もう一度お試しください。"
+    "invalidResponse": "AIの回答が無効でした。もう一度お試しください。",
+    "noHintAvailable": "ヒントを提示できませんでした。盤面をもう一度確認してください。",
+    "timeout": "AI応答がタイムアウトしました",
+    "network": "ネットワークエラー",
+    "unknownError": "ヒントの取得に失敗しました"
   },
   "error": {
     "network": "ネットワークエラー",
