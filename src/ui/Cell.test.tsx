@@ -37,4 +37,20 @@ describe('Cell', () => {
     const { getByLabelText } = render(<Cell {...defaultProps} value={5} />);
     expect(getByLabelText('cell value 5')).toBeTruthy();
   });
+
+  // === Snapshot ===
+  it('snapshot: value=7', () => {
+    const tree = render(<Cell {...defaultProps} value={7} />).toJSON();
+    expect(tree).toMatchSnapshot();
+  });
+
+  it('snapshot: empty selected cell with same-line highlight', () => {
+    const tree = render(<Cell {...defaultProps} value={0} isSelected={true} isSameLine={true} />).toJSON();
+    expect(tree).toMatchSnapshot();
+  });
+
+  it('snapshot: conflict state', () => {
+    const tree = render(<Cell {...defaultProps} value={5} isConflict={true} />).toJSON();
+    expect(tree).toMatchSnapshot();
+  });
 });

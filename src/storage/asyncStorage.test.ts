@@ -1,7 +1,22 @@
-import { describe, it, expect } from 'vitest';
-import { isValidSnapshot } from './asyncStorage';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { isValidSnapshot, saveSnapshot, loadSnapshot, clearSnapshot } from './asyncStorage';
+import { GameState } from '@/state/gameReducer';
 
-const validBoard = new Array(81).fill(0);
+// ============================================================
+// AsyncStorage in-memory モック
+// ============================================================
+const mockStore = new Map<string, string>();
+vi.mock('@react-native-async-storage/async-storage', () => ({
+  default: {
+    setItem: vi.fn(async (k: string, v: string) => { mockStore.set(k, v); }),
+    getItem: vi.fn(async (k: string) => mockStore.get(k) ?? null),
+    removeItem: vi.fn(async (k: string) => { mockStore.delete(k); }),
+  }
+}));
+
+const validBoardArr = new Array(81).fill(0);
+
+const validBoard = validBoardArr;
 
 const validSnap = {
   puzzleId: 'p1',
@@ -41,5 +56,88 @@ describe('isValidSnapshot', () => {
   });
   it('rejects null', () => {
     expect(isValidSnapshot(null)).toBe(false);
+  });
+});
+
+// ============================================================
+// I/O 系テスト（saveSnapshot / loadSnapshot / clearSnapshot）
+// ============================================================
+const validGameState = {
+  puzzleId: 'p_test',
+  difficulty: 'easy' as const,
+  initialBoard: validBoardArr,
+  currentBoard: validBoardArr,
+  solution: validBoardArr,
+  notes: {},
+  elapsedMs: 5000,
+  mistakes: 1,
+  hintsUsed: 0,
+} as unknown as GameState;
+
+describe('saveSnapshot / loadSnapshot round-trip', () => {
+  beforeEach(() => { mockStore.clear(); });
+
+  it('save then load returns equivalent snapshot', async () => {
+    await saveSnapshot(validGameState);
+    const loaded = await loadSnapshot('easy');
+    expect(loaded).not.toBeNull();
+    expect(loaded?.puzzleId).toBe('p_test');
+    expect(loaded?.difficulty).toBe('easy');
+    expect(loaded?.elapsedMs).toBe(5000);
+    expect(loaded?.mistakes).toBe(1);
+    expect(loaded?.savedAt).toBeDefined();
+  });
+
+  it('saveSnapshot no-op when difficulty is null', async () => {
+    await saveSnapshot({ ...validGameState, difficulty: null } as any);
+    expect(mockStore.size).toBe(0);
+  });
+
+  it('saveSnapshot no-op when puzzleId is null', async () => {
+    await saveSnapshot({ ...validGameState, puzzleId: null } as any);
+    expect(mockStore.size).toBe(0);
+  });
+
+  it('loadSnapshot returns null when key does not exist', async () => {
+    const loaded = await loadSnapshot('hard');
+    expect(loaded).toBeNull();
+  });
+
+  it('loadSnapshot self-heals corrupt JSON', async () => {
+    mockStore.set('sudoku.save.easy', '{ not: valid json ');
+    const loaded = await loadSnapshot('easy');
+    expect(loaded).toBeNull();
+    // 破損キーは削除されている
+    expect(mockStore.has('sudoku.save.easy')).toBe(false);
+  });
+
+  it('loadSnapshot self-heals schema-invalid data', async () => {
+    // JSON はパースできるが snapshot として不正（difficulty が不正値）
+    mockStore.set('sudoku.save.medium', JSON.stringify({
+      ...validSnap,
+      difficulty: 'insane',
+    }));
+    const loaded = await loadSnapshot('medium');
+    expect(loaded).toBeNull();
+    expect(mockStore.has('sudoku.save.medium')).toBe(false);
+  });
+
+  it('clearSnapshot removes existing entry', async () => {
+    mockStore.set('sudoku.save.hard', JSON.stringify(validSnap));
+    await clearSnapshot('hard');
+    expect(mockStore.has('sudoku.save.hard')).toBe(false);
+  });
+
+  it('save uses difficulty-specific key (multiple slots)', async () => {
+    await saveSnapshot({ ...validGameState, difficulty: 'easy' });
+    await saveSnapshot({ ...validGameState, difficulty: 'medium' });
+    await saveSnapshot({ ...validGameState, difficulty: 'hard' });
+    expect(mockStore.has('sudoku.save.easy')).toBe(true);
+    expect(mockStore.has('sudoku.save.medium')).toBe(true);
+    expect(mockStore.has('sudoku.save.hard')).toBe(true);
+    // 各スロット独立に load できる
+    expect((await loadSnapshot('easy'))?.difficulty).toBe('easy');
+    expect((await loadSnapshot('medium'))?.difficulty).toBe('medium');
+    expect((await loadSnapshot('hard'))?.difficulty).toBe('hard');
   });
 });

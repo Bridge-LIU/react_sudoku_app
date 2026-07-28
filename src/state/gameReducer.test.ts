@@ -169,6 +169,135 @@ describe('gameReducer', () => {
     expect(s.notes[1]).toBeUndefined();
   });
 
+  // ============================================================
+  // 追加テスト: 未カバー action を網羅（coverage 60% → 90%+ 目標）
+  // ============================================================
+
+  it('HINT_CORRECTION_RECEIVED overrides user mistake with solution', () => {
+    const puzzle: Board = [...emptyBoard];
+    const solution: Board = [...emptyBoard]; (solution as any)[5] = 7;
+    const start = gameReducer(initialState, {
+      type: 'START_GAME',
+      payload: { puzzleId: 'p1', difficulty: 'easy', puzzle, solution },
+    });
+    // ユーザーが 5 を入れた（間違い）
+    const filled = gameReducer({ ...start, selectedCell: 5 }, { type: 'INPUT_NUMBER', payload: { value: 5 } });
+    // 訂正ヒント：既埋め cell を正解 7 で上書き
+    const s = gameReducer(filled, { type: 'HINT_CORRECTION_RECEIVED', payload: { index: 5, number: 7 as any } });
+    expect(s.currentBoard[5]).toBe(7);
+    expect(s.hintsUsed).toBe(1);
+    expect(s.pendingHint).toBeNull();
+  });
+
+  it('HINT_CORRECTION_RECEIVED rejects bad index and bad number', () => {
+    const start = gameReducer(initialState, {
+      type: 'START_GAME',
+      payload: { puzzleId: 'p1', difficulty: 'easy', puzzle: emptyBoard, solution: emptyBoard },
+    });
+    const bad1 = gameReducer(start, { type: 'HINT_CORRECTION_RECEIVED', payload: { index: 999, number: 5 as any } });
+    expect(bad1.lastHintRejection?.reason).toBe('BAD_INDEX');
+    const bad2 = gameReducer(start, { type: 'HINT_CORRECTION_RECEIVED', payload: { index: 5, number: 0 as any } });
+    expect(bad2.lastHintRejection?.reason).toBe('BAD_NUMBER');
+  });
+
+  it('HINT_CORRECTION_RECEIVED does not touch initial cell', () => {
+    const puzzle: Board = [...emptyBoard]; (puzzle as any)[0] = 4;
+    const start = gameReducer(initialState, {
+      type: 'START_GAME',
+      payload: { puzzleId: 'p1', difficulty: 'easy', puzzle, solution: puzzle },
+    });
+    const s = gameReducer(start, { type: 'HINT_CORRECTION_RECEIVED', payload: { index: 0, number: 4 as any } });
+    expect(s.currentBoard[0]).toBe(4);  // 初期値のまま
+    expect(s.hintsUsed).toBe(0);        // カウントされない
+  });
+
+  it('HINT_REJECTED stores rejection reason', () => {
+    const s = gameReducer(initialState, { type: 'HINT_REJECTED', payload: { reason: 'MOCK_INJECT' } });
+    expect(s.lastHintRejection?.reason).toBe('MOCK_INJECT');
+    expect(s.pendingHint).toBeNull();
+  });
+
+  it('GAME_COMPLETED sets status to complete', () => {
+    const s = gameReducer({ ...initialState, status: 'playing' }, { type: 'GAME_COMPLETED' });
+    expect(s.status).toBe('complete');
+  });
+
+  it('LOAD_SAVED restores whitelisted fields and enters playing', () => {
+    const filled: Board = [...emptyBoard]; (filled as any)[3] = 8;
+    const s = gameReducer(initialState, {
+      type: 'LOAD_SAVED',
+      payload: {
+        puzzleId: 'restored_id',
+        difficulty: 'medium',
+        currentBoard: filled,
+        elapsedMs: 12000,
+        mistakes: 2,
+        hintsUsed: 1,
+        notes: { '4': [3, 5] },
+      },
+    });
+    expect(s.status).toBe('playing');
+    expect(s.puzzleId).toBe('restored_id');
+    expect(s.difficulty).toBe('medium');
+    expect(s.currentBoard[3]).toBe(8);
+    expect(s.elapsedMs).toBe(12000);
+    expect(s.mistakes).toBe(2);
+    expect(s.hintsUsed).toBe(1);
+    // history/future/selectedCell/mode はリセット
+    expect(s.history).toEqual([]);
+    expect(s.future).toEqual([]);
+    expect(s.selectedCell).toBeNull();
+    expect(s.mode).toBe('input');
+  });
+
+  it('LOAD_SAVED with empty payload falls back to defaults', () => {
+    const s = gameReducer(initialState, { type: 'LOAD_SAVED', payload: {} as any });
+    expect(s.status).toBe('playing');
+    expect(s.elapsedMs).toBe(0);
+    expect(s.mistakes).toBe(0);
+    expect(s.hintsUsed).toBe(0);
+  });
+
+  it('CHANGE_LANGUAGE updates settings.language', () => {
+    const s = gameReducer(initialState, { type: 'CHANGE_LANGUAGE', payload: { language: 'zh' } });
+    expect(s.settings.language).toBe('zh');
+    // 他の settings は変わらない
+    expect(s.settings.showMistakesImmediately).toBe(true);
+    expect(s.settings.autoRemoveNotes).toBe(true);
+  });
+
+  it('TOGGLE_SETTING flips boolean settings', () => {
+    const s1 = gameReducer(initialState, { type: 'TOGGLE_SETTING', payload: { key: 'showMistakesImmediately' } });
+    expect(s1.settings.showMistakesImmediately).toBe(false);
+    const s2 = gameReducer(s1, { type: 'TOGGLE_SETTING', payload: { key: 'autoRemoveNotes' } });
+    expect(s2.settings.autoRemoveNotes).toBe(false);
+    // 逆方向も戻せる
+    const s3 = gameReducer(s2, { type: 'TOGGLE_SETTING', payload: { key: 'showMistakesImmediately' } });
+    expect(s3.settings.showMistakesImmediately).toBe(true);
+  });
+
+  it('CHEAT_COMPLETE fills all but one cell in playing state', () => {
+    const solution: Board = [...emptyBoard];
+    for (let i = 0; i < 81; i++) (solution as any)[i] = ((i % 9) + 1);
+    const start = gameReducer(initialState, {
+      type: 'START_GAME',
+      payload: { puzzleId: 'p1', difficulty: 'easy', puzzle: emptyBoard, solution },
+    });
+    const s = gameReducer(start, { type: 'CHEAT_COMPLETE' });
+    // 空マス数を数える
+    const emptyCount = s.currentBoard.filter(v => v === 0).length;
+    expect(emptyCount).toBe(1);
+    // 選択セルは残された空マスにセット
+    expect(s.selectedCell).not.toBeNull();
+    expect(s.currentBoard[s.selectedCell!]).toBe(0);
+  });
+
+  it('CHEAT_COMPLETE is no-op when not playing', () => {
+    const s = gameReducer({ ...initialState, status: 'idle' }, { type: 'CHEAT_COMPLETE' });
+    expect(s).toEqual({ ...initialState, status: 'idle' });
+  });
+
+  // 既存: RESTART_REQUESTED（保持のため元の位置に置く）
   it('RESTART_REQUESTED resets to idle while keeping settings', () => {
     // 完成状態 + カスタム設定 から出発
     const withCustomSettings = {
