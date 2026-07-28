@@ -13,6 +13,7 @@ const deviceLanguage = Localization.getLocales()[0]?.languageCode ?? 'ja';
 const supported: Record<string, 'ja' | 'zh' | 'en'> = { ja: 'ja', zh: 'zh', en: 'en' };
 const initialLng: 'ja' | 'zh' | 'en' = supported[deviceLanguage] ?? 'ja';
 
+// eslint-disable-next-line import/no-named-as-default-member -- i18next の慣用的 fluent API: i18n.use().init()
 i18n.use(initReactI18next).init({
   resources: {
     ja: { translation: ja },

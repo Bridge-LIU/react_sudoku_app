@@ -14,7 +14,7 @@
  *   else { verdict.reason }  ← 这里 TS 知道一定有 reason
  * 比返回 null 或抛异常都优雅、类型安全。
  */
-import { Board, Digit, NonEmptyDigit, CellCoord } from '@/types/domain';
+import { Board, NonEmptyDigit, CellCoord } from '@/types/domain';
 import { isValidPlacement } from './board';
 import { isValidHint } from './validate';
 

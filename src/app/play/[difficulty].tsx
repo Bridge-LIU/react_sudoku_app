@@ -87,6 +87,19 @@ export default function PlayScreen() {
   // という自己キャンセルループで永久 loading になる。ローカル state に分離して回避。
   const [bootstrapping, setBootstrapping] = useState(false);
 
+  // 完成ダイアログの「閉じる」用ローカル state。
+  //   visible={status==='complete'} のままだと閉じられない (status を戻すと再起動になる)。
+  //   だから「complete かつ dismissed でない」を可視条件にして、完成盤面を眺めさせる余地を残す。
+  //   新規ゲームに遷移したら次の完成でまた出すため false にリセット。
+  //
+  // === Vue 対比 ===
+  //   Vue なら v-model:visible + inner ref で自然に閉じられるが、React は SSOT のため
+  //   「表示条件を state から導出」→「閉じたい」→「ローカル dismissal フラグを追加」というパターンになる。
+  const [completeDialogDismissed, setCompleteDialogDismissed] = useState(false);
+  useEffect(() => {
+    if (state.status !== 'complete') setCompleteDialogDismissed(false);
+  }, [state.status]);
+
   // Bootstrap：snapshot 復元 → 無ければ新規生成
   //
   // 発火条件:
@@ -412,7 +425,7 @@ export default function PlayScreen() {
         </View>
       )}
       <CompleteDialog
-        visible={state.status === 'complete'}
+        visible={state.status === 'complete' && !completeDialogDismissed}
         difficulty={state.difficulty ?? 'easy'}
         elapsedMs={state.elapsedMs}
         mistakes={state.mistakes}
@@ -422,7 +435,7 @@ export default function PlayScreen() {
           restartFresh();
           router.replace('/' as Href);
         }}
-        onClose={() => {}}
+        onClose={() => setCompleteDialogDismissed(true)}
       />
     </View>
   );

@@ -4,7 +4,7 @@
  * ここで一度弾いておくと、solver / hintVerifier 内部で cast を安全に使える。
  */
 
-import { Board, Digit, NonEmptyDigit, CellCoord } from '@/types/domain';
+import { Board, NonEmptyDigit, CellCoord } from '@/types/domain';
 
 export class InvalidBoardError extends Error {}
 export class InvalidHintError extends Error {}
