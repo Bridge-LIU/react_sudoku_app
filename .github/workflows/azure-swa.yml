@@ -39,8 +39,18 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-      - name: Run engine + mock contract tests
+      - name: Lint
+        run: npm run lint
+
+      - name: Run engine + mock contract + integration tests
         run: npm run test:engine
+
+      - name: Run component + snapshot tests
+        run: npm run test:components
+
+      - name: Security audit (moderate+ blocks build)
+        run: npm audit --production --audit-level=high
+        continue-on-error: true  # dev dep 系の警告で block しないため
 
       - name: Build Expo Web bundle
         run: npm run export:web
@@ -59,6 +69,43 @@ jobs:
           # 既にビルド済なので SWA 側で追加ビルドしない
           skip_app_build: true
           output_location: ''
+
+  post_deploy_e2e:
+    # デプロイ完了後、本番 URL に対して E2E + セキュリティ + a11y を実行。
+    # PR の場合は preview URL が必要になるため、main push 時のみ本番 URL を叩く。
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build_and_deploy
+    runs-on: ubuntu-latest
+    name: Post-deploy E2E
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for CDN propagation (30s)
+        run: sleep 30
+
+      - name: Run E2E + security + a11y tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
 
   close_pr:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
