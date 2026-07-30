@@ -37,5 +37,9 @@
     "showMistakes": "ミスを即時表示",
     "autoRemoveNotes": "確定時に候補を自動削除",
     "language": "言語"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "キャンセル"
   }
 }

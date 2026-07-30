@@ -1,10 +1,12 @@
 // Undo/Redo/Hint/Reset 工具栏。Bento: 各アクションを異なる bento pill 色で。
-// Reset は Web 上で window.confirm、Native では Alert.alert (Alert が Web で不完全なため)。
+// Reset の確認は Bento 風の ConfirmDialog を使う (以前は Web の window.confirm と Native の
+// Alert.alert を分岐していたが、ブラウザ原生ダイアログが Bento デザインから浮いていたため統一)。
 
-import React from 'react';
-import { View, Pressable, Text, StyleSheet, Alert, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, typography, bento } from './theme';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export interface ToolbarProps {
   onUndo: () => void;
@@ -14,19 +16,6 @@ export interface ToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
   canHint: boolean;
-}
-
-function confirmReset(title: string, message: string, onReset: () => void) {
-  if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined' && window.confirm(message)) {
-      onReset();
-    }
-    return;
-  }
-  Alert.alert(title, message, [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'OK', onPress: onReset, style: 'destructive' },
-  ]);
 }
 
 // Bento pill: 4 種のアクションを 4 色で塗り分け (色で機能を記憶させる)
@@ -64,6 +53,8 @@ function Pill({ variant, label, disabled, onPress }: PillProps) {
 
 export function Toolbar(props: ToolbarProps) {
   const { t } = useTranslation();
+  // Reset 確認ダイアログの表示制御 (ローカル state)。親に持ち上げるほどではないので Toolbar 内で完結。
+  const [resetConfirmVisible, setResetConfirmVisible] = useState(false);
 
   return (
     <View style={styles.bar}>
@@ -73,7 +64,18 @@ export function Toolbar(props: ToolbarProps) {
       <Pill
         variant="reset"
         label={t('game.reset')}
-        onPress={() => confirmReset(t('game.reset'), t('game.resetConfirm'), props.onReset)}
+        onPress={() => setResetConfirmVisible(true)}
+      />
+      <ConfirmDialog
+        visible={resetConfirmVisible}
+        title={t('game.reset')}
+        message={t('game.resetConfirm')}
+        destructive
+        onCancel={() => setResetConfirmVisible(false)}
+        onConfirm={() => {
+          setResetConfirmVisible(false);
+          props.onReset();
+        }}
       />
     </View>
   );

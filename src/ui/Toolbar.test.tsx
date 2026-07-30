@@ -46,4 +46,25 @@ describe('Toolbar', () => {
     fireEvent.press(getByText('game.redo'));
     expect(onRedo).not.toHaveBeenCalled();
   });
+
+  it('Reset opens ConfirmDialog and only calls onReset after OK', () => {
+    const onReset = jest.fn();
+    const { getByText, queryByText } = render(<Toolbar {...defaultProps} onReset={onReset} />);
+    // Reset を押しただけでは onReset は呼ばれない (確認ダイアログが出るだけ)
+    fireEvent.press(getByText('game.reset'));
+    expect(onReset).not.toHaveBeenCalled();
+    expect(queryByText('game.resetConfirm')).toBeTruthy();
+    // OK を押して初めて onReset が呼ばれる
+    fireEvent.press(getByText('common.ok'));
+    expect(onReset).toHaveBeenCalledTimes(1);
+  });
+
+  it('Reset → Cancel does not call onReset and hides dialog', () => {
+    const onReset = jest.fn();
+    const { getByText, queryByText } = render(<Toolbar {...defaultProps} onReset={onReset} />);
+    fireEvent.press(getByText('game.reset'));
+    fireEvent.press(getByText('common.cancel'));
+    expect(onReset).not.toHaveBeenCalled();
+    expect(queryByText('game.resetConfirm')).toBeNull();
+  });
 });

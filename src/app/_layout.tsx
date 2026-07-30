@@ -32,6 +32,22 @@ function redact(err: unknown): { name: string; message: string } {
 const GLOBAL_HANDLER_MARK = '__sudokuGlobalHandlerInstalled__' as const;
 
 export default function RootLayout() {
+  // Web only: ブラウザ既定の focus outline / タップハイライト / テキスト選択を消す。
+  // Bento pill は色 + 影 + pressed transform で十分な視覚フィードバックがあり、
+  // 青い outline は Bento デザインから浮くため。ただし :focus-visible (キーボード操作) は残して
+  // アクセシビリティを維持する — マウス click 由来の outline のみ抑える。
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const style = document.createElement('style');
+    style.textContent = `
+      [role="button"]:focus:not(:focus-visible) { outline: none !important; }
+      [role="button"] { -webkit-user-select: none; user-select: none; }
+      * { -webkit-tap-highlight-color: transparent; }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
+
   // グローバル例外ハンドラ：ErrorBoundary は「レンダー中の例外」しか捕捉しない。
   // イベントハンドラ内の throw、Promise rejection、setTimeout 内エラーはここで拾う。
   useEffect(() => {

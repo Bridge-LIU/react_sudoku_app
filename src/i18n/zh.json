@@ -37,5 +37,9 @@
     "showMistakes": "即时显示错误",
     "autoRemoveNotes": "确定时自动清理候选",
     "language": "语言"
+  },
+  "common": {
+    "ok": "确定",
+    "cancel": "取消"
   }
 }

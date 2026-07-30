@@ -10,7 +10,7 @@ export default defineConfig({
   fullyParallel: true,
   reporter: 'list',
   use: {
-    baseURL: 'https://lemon-cliff-0313ffa10.7.azurestaticapps.net',
+    baseURL: 'https://brave-sand-0aa805600.7.azurestaticapps.net',
     trace: 'on-first-retry',
     // 明示的に日本語ロケール（expo-localization が deviceLanguage='ja' を返す）
     locale: 'ja-JP',
