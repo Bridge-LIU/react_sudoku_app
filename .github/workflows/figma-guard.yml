@@ -82,8 +82,8 @@ jobs:
           fi
 
           # I2 fix: push 前 branch アサーション
-          [ "$(git rev-parse --abbrev-ref HEAD)" = "figma-sync/state" ] || {
-            echo "❌ unexpected branch $(git rev-parse --abbrev-ref HEAD), refuse to push" >> $GITHUB_STEP_SUMMARY
+          [ "$(git symbolic-ref --short HEAD)" = "figma-sync/state" ] || {
+            echo "❌ unexpected branch $(git symbolic-ref --short HEAD), refuse to push" >> $GITHUB_STEP_SUMMARY
             exit 1
           }
 
