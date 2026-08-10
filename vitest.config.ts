@@ -13,6 +13,7 @@ export default defineConfig({
       'src/state/**/*.test.ts',
       'src/storage/**/*.test.ts',
       'src/__integration__/**/*.test.ts',
+      'scripts/**/*.test.js',
     ],
     environment: 'node',
     pool: 'forks',

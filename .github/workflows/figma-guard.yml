@@ -1,0 +1,112 @@
+name: figma-guard
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Run unit tests
+        run: npx vitest run scripts/figma-check.test.js
+
+      - name: Fetch prev state from orphan branch (may not exist on first run)
+        id: fetch-state
+        continue-on-error: true
+        run: |
+          if git fetch origin figma-sync/state 2>/dev/null; then
+            mkdir -p /tmp/prev
+            git show origin/figma-sync/state:state.json > /tmp/prev/state.json
+            echo "prev_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "no prev state (first run)"
+            echo "prev_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run figma check
+        env:
+          FIGMA_TOKEN: ${{ secrets.FIGMA_ACCESS_TOKEN }}
+        run: |
+          if [ "${{ steps.fetch-state.outputs.prev_exists }}" = "true" ]; then
+            node scripts/figma-check.js --pull-and-diff \
+              --config .figma-sync.json \
+              --prev-state /tmp/prev/state.json \
+              --out /tmp/state.json
+          else
+            node scripts/figma-check.js --pull-and-diff \
+              --config .figma-sync.json \
+              --out /tmp/state.json
+          fi
+
+      - name: Push state to orphan branch
+        run: |
+          git config user.name "figma-sync-bot"
+          git config user.email "bot@figma-sync.local"
+
+          # C1 fix: separate worktree で orphan branch 操作、main checkout との干渉を隔離
+          git worktree add --detach /tmp/state-wt
+          cd /tmp/state-wt
+
+          if git fetch origin figma-sync/state 2>/dev/null; then
+            git checkout -B figma-sync/state origin/figma-sync/state
+          else
+            git checkout --orphan figma-sync/state
+            git rm -rf . 2>/dev/null || true
+            # orphan branch 専用 .gitignore（state.json 以外全部除外）
+            printf "*\n!.gitignore\n!state.json\n" > .gitignore
+            git add .gitignore
+          fi
+
+          cp /tmp/state.json state.json
+          git add state.json
+
+          # C2 fix: HEAD 不在（初回 orphan）と通常時を明示分岐
+          if git rev-parse --verify HEAD >/dev/null 2>&1; then
+            if git diff --cached --quiet; then
+              echo "no state change, skip push" >> $GITHUB_STEP_SUMMARY
+              exit 0
+            fi
+          fi
+
+          # I2 fix: push 前 branch アサーション
+          [ "$(git rev-parse --abbrev-ref HEAD)" = "figma-sync/state" ] || {
+            echo "❌ unexpected branch $(git rev-parse --abbrev-ref HEAD), refuse to push" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
+
+          git commit -m "state @ $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push origin figma-sync/state
+
+          # 漏検 #5 fix: push 後校验（silent push failure 検出）
+          LOCAL_HEAD=$(git rev-parse HEAD)
+          git fetch --depth 1 origin figma-sync/state
+          REMOTE_HEAD=$(git rev-parse origin/figma-sync/state)
+          if [ "$LOCAL_HEAD" != "$REMOTE_HEAD" ]; then
+            echo "❌ push verification failed: local $LOCAL_HEAD ≠ remote $REMOTE_HEAD" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f /tmp/state.json ]; then
+            echo "## ✅ state generated" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            jq '{figmaVersion, checkedAt, changedSinceLastRun, added, removed}' /tmp/state.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ figma-check failed" >> $GITHUB_STEP_SUMMARY
+          fi
