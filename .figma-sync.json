@@ -1,0 +1,11 @@
+{
+  "fileKey": "cwmewA4MTWktw6E7uhQFK2",
+  "fileName": "Sudoku-UI",
+  "frames": {
+    "0:1": "src/pages/JP.tsx",
+    "6:6": "src/pages/ZH.tsx",
+    "6:410": "src/pages/EN.tsx"
+  },
+  "assetsRoot": "figma_assets",
+  "lastSyncedVersion": null
+}

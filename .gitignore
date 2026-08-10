@@ -34,3 +34,11 @@ expo-env.d.ts
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# Figma インポート用の一時スクリーンショット (ローカル生成物 - コミット禁止)
+/figma_assets/
+/e2e/screenshots.spec.ts
+
+# figma-sync（本地 skill 用）
+.figma-cache/
+/tmp/state.json
