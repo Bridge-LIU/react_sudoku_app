@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canonicalize, sha256, findNode, computePerFrameHash, computeMetaHash, diffHashes } from './figma-check.js';
+import { canonicalize, sha256, findNode, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint } from './figma-check.js';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -150,5 +150,55 @@ describe('diffHashes', () => {
     expect(result.changed).toEqual(['6:6']);
     expect(result.added).toEqual(['9:999']);
     expect(result.removed).toEqual(['6:410']);
+  });
+});
+
+describe('assertFigmaResponse', () => {
+  it('passes on valid response', () => {
+    expect(() => assertFigmaResponse({
+      version: '123',
+      lastModified: '2026-01-01T00:00:00Z',
+    })).not.toThrow();
+  });
+
+  it('throws when version missing', () => {
+    expect(() => assertFigmaResponse({ lastModified: '2026-01-01T00:00:00Z' }))
+      .toThrow(/version/);
+  });
+
+  it('throws when version is not string', () => {
+    expect(() => assertFigmaResponse({ version: 123, lastModified: '2026-01-01T00:00:00Z' }))
+      .toThrow(/version/);
+  });
+
+  it('throws when lastModified missing', () => {
+    expect(() => assertFigmaResponse({ version: '123' }))
+      .toThrow(/lastModified/);
+  });
+});
+
+describe('assertHashStability', () => {
+  it('passes when hashing is deterministic', () => {
+    expect(() => assertHashStability(v1.document, ['0:1', '6:6'])).not.toThrow();
+  });
+});
+
+describe('assertDiffDisjoint', () => {
+  it('passes on disjoint sets', () => {
+    expect(() => assertDiffDisjoint({
+      changed: ['a'], added: ['b'], removed: ['c'],
+    })).not.toThrow();
+  });
+
+  it('throws when id in both changed and added', () => {
+    expect(() => assertDiffDisjoint({
+      changed: ['x'], added: ['x'], removed: [],
+    })).toThrow(/overlap/);
+  });
+
+  it('throws when id in both added and removed', () => {
+    expect(() => assertDiffDisjoint({
+      changed: [], added: ['x'], removed: ['x'],
+    })).toThrow(/overlap/);
   });
 });
