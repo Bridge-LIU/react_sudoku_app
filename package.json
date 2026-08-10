@@ -49,6 +49,12 @@
     "typescript": "~5.9.2",
     "vitest": "^4.1.10"
   },
+  "overrides": {
+    "brace-expansion": "5.0.8",
+    "postcss@<8.5.25": "8.5.25",
+    "uuid": "11.1.1",
+    "minimatch@<10.2.6": "10.2.6"
+  },
   "scripts": {
     "start": "expo start",
     "web": "expo start --web",
@@ -59,6 +65,7 @@
     "test:engine:watch": "vitest",
     "test:components": "jest --config jest.config.js",
     "test:e2e": "playwright test",
+    "test:all": "node scripts/test-all.js",
     "typecheck": "tsc --noEmit",
     "reset-project": "node ./scripts/reset-project.js",
     "lint": "expo lint"

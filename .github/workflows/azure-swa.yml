@@ -48,9 +48,10 @@ jobs:
       - name: Run component + snapshot tests
         run: npm run test:components
 
-      - name: Security audit (moderate+ blocks build)
+      - name: Security audit (production deps, high+ blocks build)
         run: npm audit --production --audit-level=high
-        continue-on-error: true  # dev dep 系の警告で block しないため
+        # 2026-07-30: continue-on-error を除去。本番依存の high 以上はビルド阻止する。
+        # dev 依存の警告は --production フラグで既に対象外。
 
       - name: Build Expo Web bundle
         run: npm run export:web
