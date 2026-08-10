@@ -14,8 +14,19 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   }
 }));
 
-const validBoardArr = new Array(81).fill(0);
+// 有効な数独解 (行 = 1..9 を全 9 行で circular shift、ブロック則を満たすシャッフル)
+const validSolutionArr: number[] = (() => {
+  const rowBase = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const shifts = [0, 3, 6, 1, 4, 7, 2, 5, 8];   // 数独有効な行シフト順
+  const board: number[] = [];
+  for (const s of shifts) {
+    for (let c = 0; c < 9; c++) board.push(rowBase[(c + s) % 9]!);
+  }
+  return board;
+})();
 
+// initialBoard / currentBoard は全 0 (空盤面) でも valid
+const validBoardArr = new Array(81).fill(0);
 const validBoard = validBoardArr;
 
 const validSnap = {
@@ -23,7 +34,7 @@ const validSnap = {
   difficulty: 'easy',
   initialBoard: validBoard,
   currentBoard: validBoard,
-  solution: validBoard,
+  solution: validSolutionArr,
   notes: {},
   elapsedMs: 0,
   mistakes: 0,
@@ -57,6 +68,28 @@ describe('isValidSnapshot', () => {
   it('rejects null', () => {
     expect(isValidSnapshot(null)).toBe(false);
   });
+  it('rejects solution containing 0 (伪完成攻撃防止)', () => {
+    const badSol = [...validSolutionArr]; badSol[0] = 0;
+    expect(isValidSnapshot({ ...validSnap, solution: badSol })).toBe(false);
+  });
+  it('rejects all-zero solution', () => {
+    expect(isValidSnapshot({ ...validSnap, solution: new Array(81).fill(0) })).toBe(false);
+  });
+  it('rejects when initialBoard cell does not match solution (盤面不整合)', () => {
+    const init = new Array(81).fill(0); init[0] = 9;
+    const cur = [...init];
+    // solution[0] は validSolutionArr[0]===1 なので、9 !== 1 で拒否
+    expect(isValidSnapshot({
+      ...validSnap, initialBoard: init, currentBoard: cur,
+    })).toBe(false);
+  });
+  it('rejects when currentBoard tampered with initial cell', () => {
+    const init = new Array(81).fill(0); init[0] = validSolutionArr[0];
+    const cur = [...init]; cur[0] = 5;  // 初期セルが書き換えられている
+    expect(isValidSnapshot({
+      ...validSnap, initialBoard: init, currentBoard: cur,
+    })).toBe(false);
+  });
 });
 
 // ============================================================
@@ -67,7 +100,7 @@ const validGameState = {
   difficulty: 'easy' as const,
   initialBoard: validBoardArr,
   currentBoard: validBoardArr,
-  solution: validBoardArr,
+  solution: validSolutionArr,
   notes: {},
   elapsedMs: 5000,
   mistakes: 1,

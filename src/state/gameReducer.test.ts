@@ -118,7 +118,10 @@ describe('gameReducer', () => {
       type: 'START_GAME',
       payload: { puzzleId: 'p1', difficulty: 'easy', puzzle: emptyBoard, solution: emptyBoard },
     });
-    const s = gameReducer(start, { type: 'HINT_RECEIVED', payload: { index: 100, number: 5 } as any });
+    // Reducer は pendingHint が null の場合 response を破棄する (Reset 抢跑対策)。
+    // BAD_INDEX 検証にはまず REQUEST_HINT_START を経由させる必要がある。
+    const pending = gameReducer(start, { type: 'REQUEST_HINT_START', payload: { level: 'strong' } });
+    const s = gameReducer(pending, { type: 'HINT_RECEIVED', payload: { index: 100, number: 5 } as any });
     expect(s.lastHintRejection?.reason).toBe('BAD_INDEX');
   });
 
@@ -127,8 +130,23 @@ describe('gameReducer', () => {
       type: 'START_GAME',
       payload: { puzzleId: 'p1', difficulty: 'easy', puzzle: emptyBoard, solution: emptyBoard },
     });
-    const s = gameReducer(start, { type: 'HINT_RECEIVED', payload: { index: 0, number: 0 } as any });
+    const pending = gameReducer(start, { type: 'REQUEST_HINT_START', payload: { level: 'strong' } });
+    const s = gameReducer(pending, { type: 'HINT_RECEIVED', payload: { index: 0, number: 0 } as any });
     expect(s.lastHintRejection?.reason).toBe('BAD_NUMBER');
+  });
+
+  it('HINT_RECEIVED is dropped when pendingHint is null (Reset 抢跑対策)', () => {
+    // pendingHint が無い状態で late response が届いても盤面を汚さない。
+    const puzzle: Board = [...emptyBoard];
+    const solution: Board = [...emptyBoard]; (solution as any)[5] = 7;
+    const start = gameReducer(initialState, {
+      type: 'START_GAME',
+      payload: { puzzleId: 'p1', difficulty: 'easy', puzzle, solution },
+    });
+    // pendingHint を立てず直接 HINT_RECEIVED → 破棄される
+    const s = gameReducer(start, { type: 'HINT_RECEIVED', payload: { index: 5, number: 7 as any } });
+    expect(s.currentBoard[5]).toBe(0);
+    expect(s.hintsUsed).toBe(0);
   });
 
   it('HINT_RECEIVED on already-filled cell is ignored', () => {
@@ -182,8 +200,10 @@ describe('gameReducer', () => {
     });
     // ユーザーが 5 を入れた（間違い）
     const filled = gameReducer({ ...start, selectedCell: 5 }, { type: 'INPUT_NUMBER', payload: { value: 5 } });
+    // hint request 開始 (pendingHint を立てる)
+    const pending = gameReducer(filled, { type: 'REQUEST_HINT_START', payload: { level: 'strong' } });
     // 訂正ヒント：既埋め cell を正解 7 で上書き
-    const s = gameReducer(filled, { type: 'HINT_CORRECTION_RECEIVED', payload: { index: 5, number: 7 as any } });
+    const s = gameReducer(pending, { type: 'HINT_CORRECTION_RECEIVED', payload: { index: 5, number: 7 as any } });
     expect(s.currentBoard[5]).toBe(7);
     expect(s.hintsUsed).toBe(1);
     expect(s.pendingHint).toBeNull();
@@ -194,9 +214,10 @@ describe('gameReducer', () => {
       type: 'START_GAME',
       payload: { puzzleId: 'p1', difficulty: 'easy', puzzle: emptyBoard, solution: emptyBoard },
     });
-    const bad1 = gameReducer(start, { type: 'HINT_CORRECTION_RECEIVED', payload: { index: 999, number: 5 as any } });
+    const pending = gameReducer(start, { type: 'REQUEST_HINT_START', payload: { level: 'strong' } });
+    const bad1 = gameReducer(pending, { type: 'HINT_CORRECTION_RECEIVED', payload: { index: 999, number: 5 as any } });
     expect(bad1.lastHintRejection?.reason).toBe('BAD_INDEX');
-    const bad2 = gameReducer(start, { type: 'HINT_CORRECTION_RECEIVED', payload: { index: 5, number: 0 as any } });
+    const bad2 = gameReducer(pending, { type: 'HINT_CORRECTION_RECEIVED', payload: { index: 5, number: 0 as any } });
     expect(bad2.lastHintRejection?.reason).toBe('BAD_NUMBER');
   });
 

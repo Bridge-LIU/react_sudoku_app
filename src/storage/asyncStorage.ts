@@ -35,6 +35,15 @@ function isValidBoardArray(v: unknown): v is number[] {
   return true;
 }
 
+// solution 専用: 全マスが 1..9 (0 禁止)。
+// 0 を許すと isComplete が currentBoard[空マス:0] === solution[0] で偽真になり、
+// 未完成盤面のまま "complete" に遷移してしまう (伪解攻撃)。
+function isValidSolutionArray(v: unknown): v is number[] {
+  if (!Array.isArray(v) || v.length !== 81) return false;
+  for (const x of v) if (!Number.isInteger(x) || x < 1 || x > 9) return false;
+  return true;
+}
+
 function isValidDifficulty(v: unknown): v is Difficulty {
   return v === 'easy' || v === 'medium' || v === 'hard';
 }
@@ -57,7 +66,13 @@ export function isValidSnapshot(v: unknown): v is SavedSnapshot {
   if (!isValidDifficulty(s.difficulty)) return false;
   if (!isValidBoardArray(s.initialBoard)) return false;
   if (!isValidBoardArray(s.currentBoard)) return false;
-  if (!isValidBoardArray(s.solution)) return false;
+  if (!isValidSolutionArray(s.solution)) return false;   // 0 禁止 (伪完成防止)
+  // 交叉検証: 初期セルの値は solution と一致していなければ破損 (盤面不整合)
+  for (let i = 0; i < 81; i++) {
+    if (s.initialBoard[i] !== 0 && s.initialBoard[i] !== s.solution[i]) return false;
+    // currentBoard の初期セルも書き換わっていないことを保証
+    if (s.initialBoard[i] !== 0 && s.currentBoard[i] !== s.initialBoard[i]) return false;
+  }
   if (!isValidNotes(s.notes)) return false;
   if (!Number.isFinite(s.elapsedMs) || s.elapsedMs < 0) return false;
   if (!Number.isInteger(s.mistakes) || s.mistakes < 0) return false;

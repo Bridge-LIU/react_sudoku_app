@@ -34,6 +34,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       lastTickRef.current = Date.now(); // 再開時に大きな delta が入らないようリセット
       return;
     }
+    // playing に入る瞬間にも ref を初期化する。
+    // 初回マウント (bootstrap 数秒後) や complete → RESTART_REQUESTED → playing 経由の場合、
+    // ref が古いままだと初 tick で ~2 秒 (clamp 上限) 加算されて時計が跳ぶ。
+    lastTickRef.current = Date.now();
     const id = setInterval(() => {
       const now = Date.now();
       const rawDelta = now - lastTickRef.current;

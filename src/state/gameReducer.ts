@@ -18,6 +18,7 @@
 
 import { Board, Difficulty, Digit, HintLevel, NonEmptyDigit, Notes } from '@/types/domain';
 import { peersOf } from '@/engine/board';
+import { detectInitialLanguage } from '@/i18n/detectLanguage';
 
 const EMPTY: Board = new Array(81).fill(0);
 
@@ -69,7 +70,7 @@ export const initialState: GameState = {
   elapsedMs: 0,
   mistakes: 0,
   hintsUsed: 0,
-  settings: { showMistakesImmediately: true, autoRemoveNotes: true, language: 'ja' },
+  settings: { showMistakesImmediately: true, autoRemoveNotes: true, language: detectInitialLanguage() },
   pendingHint: null,
   lastHintRejection: null,
 };
@@ -142,14 +143,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       if (state.mode === 'memo') {
         if (value === 0) return state;
+        // 既に数値が入っているセルにメモを打っても UI 上見えず、
+        // history だけ膨らんで Undo が壊れるので早期 return。
+        if (state.currentBoard[idx] !== 0) return state;
         const cur = state.notes[idx] ?? [];
-        const curCell = state.currentBoard[idx] ?? 0;
         // メモの toggle：既にあれば削除、なければ追加してソート
         const next = cur.includes(value as NonEmptyDigit)
           ? cur.filter(n => n !== value)
           : [...cur, value as NonEmptyDigit].sort();
         const entry: HistoryEntry = {
-          index: idx, prevValue: curCell, nextValue: curCell,
+          index: idx, prevValue: 0, nextValue: 0,
           prevNotes: cur, nextNotes: next,
         };
         return {
@@ -162,11 +165,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       // 通常入力モード
       const prev = state.currentBoard[idx] ?? 0;
+      // no-op 早期 return: 空セルで Delete、同じ値の再入力 → history を汚さない
+      if (prev === value) return state;
       const nextBoard = writeAt(state.currentBoard, idx, value);
       const entry: HistoryEntry = {
         index: idx, prevValue: prev, nextValue: value,
         prevNotes: state.notes[idx] ?? [], nextNotes: [],
       };
+      // mistakes: 新しく誤った値を確定した時のみ +1 (同じ誤値の再入力・重複計上を防ぐ)
       const mistakesInc =
         state.settings.showMistakesImmediately && value !== 0 && value !== state.solution[idx] ? 1 : 0;
       // 数値確定したらメモは消える
@@ -239,6 +245,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case 'RESUME': return state.status === 'paused' ? { ...state, status: 'playing' } : state;
 
     case 'RESET_CONFIRMED':
+      // 進行中の hint 要求も無効化する (レスポンス到着時に reducer 側で無視される)。
       return {
         ...state,
         currentBoard: state.initialBoard,
@@ -246,12 +253,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         history: [], future: [],
         mistakes: 0, hintsUsed: 0, elapsedMs: 0,
         status: 'playing',
+        pendingHint: null,
+        lastHintRejection: null,
       };
 
     case 'REQUEST_HINT_START':
       return { ...state, pendingHint: { level: action.payload.level }, lastHintRejection: null };
 
     case 'HINT_RECEIVED': {
+      // pendingHint が無い = ユーザーが Reset した後に届いた古い応答 → 破棄する。
+      if (!state.pendingHint) return state;
       const { index, number } = action.payload;
       // 境界チェック：AI 由来なので信用しない（Engine の verifyHint と二重防御）
       if (!Number.isInteger(index) || index < 0 || index > 80) {
@@ -284,6 +295,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       // 訂正 hint：既に埋まってるセル (ユーザーの間違い) を正解で上書きする。
       // HINT_RECEIVED との違い: current[idx] !== 0 でも通す (むしろその前提)。
       // 初期セルは絶対に触らない (仕様書要求)。
+      // pendingHint が無い = Reset 後の遅延応答 → 破棄。
+      if (!state.pendingHint) return state;
       const { index, number } = action.payload;
       if (!Number.isInteger(index) || index < 0 || index > 80) {
         return { ...state, pendingHint: null, lastHintRejection: { reason: 'BAD_INDEX' } };
