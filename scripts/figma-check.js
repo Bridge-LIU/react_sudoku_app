@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
+import { parseArgs } from 'node:util';
+import { pathToFileURL } from 'node:url';
 import stringify from 'fast-json-stable-stringify';
 import { z } from 'zod';
 
@@ -147,3 +150,117 @@ export const ConfigSchema = z.object({
   assetsRoot: z.string().optional(),
   lastSyncedVersion: z.string().nullable(),
 });
+
+export async function runCheck({ configPath, outPath, prevStatePath }) {
+  const token = process.env.FIGMA_TOKEN;
+  if (!token) throw new Error('FIGMA_TOKEN env var not set');
+
+  // Load and validate config
+  const rawConfig = JSON.parse(await readFile(configPath, 'utf8'));
+  const config = ConfigSchema.parse(rawConfig);
+  const registeredIds = Object.keys(config.frames);
+
+  // Load previous state if provided (may not exist on first run)
+  let prevState = null;
+  if (prevStatePath) {
+    try {
+      const raw = await readFile(prevStatePath, 'utf8');
+      prevState = StateSchema.parse(JSON.parse(raw));
+    } catch (e) {
+      if (e.code !== 'ENOENT') {
+        console.warn(`prev state load failed: ${e.message} (treating as first run)`);
+      }
+    }
+  }
+
+  // Fetch depth=1 to get version
+  const depth1 = await fetchFigmaDepth1(config.fileKey, token);
+  assertFigmaResponse(depth1);
+
+  // Early exit if version unchanged
+  if (prevState && prevState.figmaVersion === depth1.version) {
+    const state = {
+      ...prevState,
+      checkedAt: new Date().toISOString(),
+      workflowRunId: process.env.GITHUB_RUN_ID ? Number(process.env.GITHUB_RUN_ID) : null,
+      // reset diff arrays since we're up-to-date
+      changedSinceLastRun: [],
+      added: [],
+      removed: [],
+      metaChanged: false,
+    };
+    StateSchema.parse(state);
+    await writeFile(outPath, JSON.stringify(state, null, 2));
+    console.log(`no change (figma version ${depth1.version} matches prev state)`);
+    return { changed: [], added: [], removed: [], metaChanged: false };
+  }
+
+  // Fetch full tree
+  const full = await fetchFigmaFull(config.fileKey, token);
+  assertFigmaResponse(full);
+
+  // Compute per-frame hashes (with stability check)
+  assertHashStability(full.document, registeredIds);
+  const currHashes = computePerFrameHash(full.document, registeredIds);
+  const currMetaHash = computeMetaHash(full);
+
+  // Diff
+  const prevHashes = prevState?.perFrameHash || null;
+  const diff = diffHashes(prevHashes, currHashes);
+  assertDiffDisjoint(diff);
+
+  // 漏検リスク #1・#2 対応: metaHash 変化検出
+  const metaChanged = prevState ? (prevState.metaHash !== currMetaHash) : true;
+
+  // Build state
+  const state = {
+    checkedAt: new Date().toISOString(),
+    workflowRunId: process.env.GITHUB_RUN_ID ? Number(process.env.GITHUB_RUN_ID) : null,
+    fileKey: config.fileKey,
+    figmaVersion: full.version,
+    figmaLastModified: full.lastModified,
+    treeHash: sha256(canonicalize(full.document)),
+    metaHash: currMetaHash,
+    perFrameHash: currHashes,
+    changedSinceLastRun: diff.changed,
+    added: diff.added,
+    removed: diff.removed,
+    metaChanged,
+  };
+
+  StateSchema.parse(state); // 自検 ②
+
+  await writeFile(outPath, JSON.stringify(state, null, 2));
+  console.log(`state written: ${diff.changed.length} changed, ${diff.added.length} added, ${diff.removed.length} removed, metaChanged=${metaChanged}`);
+  return { ...diff, metaChanged };
+}
+
+async function main() {
+  const { values } = parseArgs({
+    options: {
+      'pull-and-diff': { type: 'boolean' },
+      'pull-only': { type: 'boolean' },
+      config: { type: 'string', default: '.figma-sync.json' },
+      out: { type: 'string', default: '/tmp/state.json' },
+      'prev-state': { type: 'string' },
+    },
+  });
+
+  if (!values['pull-and-diff'] && !values['pull-only']) {
+    console.error('Usage: figma-check.js --pull-and-diff [--prev-state <path>] [--config <path>] [--out <path>]');
+    process.exit(2);
+  }
+
+  await runCheck({
+    configPath: values.config,
+    outPath: values.out,
+    prevStatePath: values['prev-state'],
+  });
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error(err.message);
+    process.exit(1);
+  });
+}

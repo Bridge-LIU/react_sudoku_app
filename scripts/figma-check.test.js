@@ -1,8 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { canonicalize, sha256, findNode, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema } from './figma-check.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { canonicalize, sha256, findNode, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema, runCheck } from './figma-check.js';
 import { readFileSync } from 'node:fs';
+import { writeFile, readFile, mkdir, rm } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const loadFixture = (name) =>
@@ -256,5 +258,103 @@ describe('ConfigSchema', () => {
       frames: {},
       lastSyncedVersion: '12345',
     })).not.toThrow();
+  });
+});
+
+describe('runCheck integration', () => {
+  let tmpDir;
+  let configPath;
+  let outPath;
+
+  beforeEach(async () => {
+    tmpDir = join(tmpdir(), `figma-check-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    await mkdir(tmpDir, { recursive: true });
+    configPath = join(tmpDir, 'config.json');
+    outPath = join(tmpDir, 'state.json');
+
+    await writeFile(configPath, JSON.stringify({
+      fileKey: 'testkey',
+      frames: {
+        '0:1': 'src/pages/JP.tsx',
+        '6:6': 'src/pages/ZH.tsx',
+        '6:410': 'src/pages/EN.tsx',
+      },
+      lastSyncedVersion: null,
+    }));
+
+    process.env.FIGMA_TOKEN = 'fake-token';
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
+  });
+
+  function mockFetch(depth1Response, fullResponse) {
+    global.fetch = vi.fn(async (url) => {
+      if (url.includes('depth=1')) {
+        return { ok: true, status: 200, json: async () => depth1Response };
+      }
+      return { ok: true, status: 200, json: async () => fullResponse };
+    });
+  }
+
+  it('first run: all registered frames go into added', async () => {
+    mockFetch(v1, v1);
+    const diff = await runCheck({ configPath, outPath });
+    expect(diff.added.sort()).toEqual(['0:1', '6:410', '6:6']);
+    expect(diff.changed).toEqual([]);
+    expect(diff.removed).toEqual([]);
+
+    const state = JSON.parse(await readFile(outPath, 'utf8'));
+    expect(state.figmaVersion).toBe(v1.version);
+    expect(Object.keys(state.perFrameHash).sort()).toEqual(['0:1', '6:410', '6:6']);
+  });
+
+  it('v1 → v2: only 6:6 in changed', async () => {
+    mockFetch(v1, v1);
+    await runCheck({ configPath, outPath });
+    // now use output as prev state
+    mockFetch(v2, v2);
+    const diff = await runCheck({ configPath, outPath, prevStatePath: outPath });
+    expect(diff.changed).toEqual(['6:6']);
+    expect(diff.added).toEqual([]);
+    expect(diff.removed).toEqual([]);
+  });
+
+  it('v1 → v3: added 9:999 is not in registered, no diff impact', async () => {
+    mockFetch(v1, v1);
+    await runCheck({ configPath, outPath });
+    mockFetch(v3, v3);
+    const diff = await runCheck({ configPath, outPath, prevStatePath: outPath });
+    // 9:999 is NOT in config.frames, so computePerFrameHash won't include it
+    expect(diff.changed).toEqual([]);
+    expect(diff.added).toEqual([]);
+    expect(diff.removed).toEqual([]);
+  });
+
+  it('v1 → v4: 6:410 removed → in removed array', async () => {
+    mockFetch(v1, v1);
+    await runCheck({ configPath, outPath });
+    mockFetch(v4, v4);
+    const diff = await runCheck({ configPath, outPath, prevStatePath: outPath });
+    expect(diff.removed).toEqual(['6:410']);
+    expect(diff.changed).toEqual([]);
+    expect(diff.added).toEqual([]);
+  });
+
+  it('version unchanged: early exit, no full pull', async () => {
+    mockFetch(v1, v1);
+    await runCheck({ configPath, outPath });
+
+    // reset mock counter, guard against full fetch
+    global.fetch = vi.fn(async (url) => {
+      if (url.includes('depth=1')) {
+        return { ok: true, status: 200, json: async () => v1 };
+      }
+      throw new Error('should NOT call full fetch');
+    });
+    const diff = await runCheck({ configPath, outPath, prevStatePath: outPath });
+    expect(diff).toEqual({ changed: [], added: [], removed: [], metaChanged: false });
   });
 });
