@@ -17,6 +17,7 @@
 
 import { hintRequestSchema, HintResponse } from '@/mocks/schemas/hint';
 import { peersOf, isValidPlacement } from '@/engine/board';
+import type { Board, Digit } from '@/types/domain';
 
 // エラー注入率。デフォルト 0 (仕様書には無い仕組みなので通常 UX は常に正しい hint)。
 // verify 分支の網羅は engine/hintVerifier.test.ts + mocks/__tests__/hints.test.ts で
@@ -64,8 +65,10 @@ export function handleRequestHint(rawBody: unknown): { status: number; body: unk
   // 「安全な空マス」= 正解を置いても盤面既存の (誤入力含む) peer と衝突しないもの。
   // これを使わないと、ユーザーが誤って peer に同じ数字を入れているとき hint が verifier で
   // CONFLICT 拒否され、UI に「AIの回答が無効でした」が出てしまう。
+  // zod digitSchema is z.number().int().min(0).max(9) — runtime narrows to Digit
+  // but TS still sees number[]. Runtime-validated data → safe to cast.
   const safeEmpties = empties.filter((idx) =>
-    isValidPlacement(currentBoard, idx, solution[idx]!)
+    isValidPlacement(currentBoard as unknown as Board, idx, solution[idx]! as Digit)
   );
 
   // 優先度 (誤りセル訂正は最後の手段):
