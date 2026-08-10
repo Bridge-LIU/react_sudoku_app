@@ -108,9 +108,26 @@ export function assertDiffDisjoint({ changed, added, removed }) {
   }
 }
 
+// Rate limit / transient error retry (I3 fix from code review + 2026-08-10 late 実測):
+// Figma REST は非公開 rate limit あり、短時間連打で 429。5xx は upstream 一時障害。
+// 両方共 exponential backoff で 3 回まで retry する。Retry-After header 優先。
+async function fetchWithRetry(url, options, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const res = await fetch(url, options);
+    if (res.ok) return res;
+    // 4xx (excluding 429) is non-retryable
+    if (res.status !== 429 && res.status < 500) return res;
+    if (attempt === retries - 1) return res; // 最終試行、そのまま返す
+    const retryAfter = parseInt(res.headers.get('retry-after') || '0', 10);
+    const wait = retryAfter > 0 ? retryAfter * 1000 : Math.pow(2, attempt) * 5000;
+    console.warn(`Figma REST ${res.status}, retry ${attempt + 1}/${retries} after ${wait}ms`);
+    await new Promise((r) => setTimeout(r, wait));
+  }
+}
+
 export async function fetchFigmaDepth1(fileKey, token) {
   const url = `https://api.figma.com/v1/files/${fileKey}?depth=1`;
-  const res = await fetch(url, { headers: { 'X-Figma-Token': token } });
+  const res = await fetchWithRetry(url, { headers: { 'X-Figma-Token': token } });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Figma REST ${res.status}: ${body.slice(0, 200)}`);
@@ -120,7 +137,7 @@ export async function fetchFigmaDepth1(fileKey, token) {
 
 export async function fetchFigmaFull(fileKey, token) {
   const url = `https://api.figma.com/v1/files/${fileKey}`;
-  const res = await fetch(url, { headers: { 'X-Figma-Token': token } });
+  const res = await fetchWithRetry(url, { headers: { 'X-Figma-Token': token } });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Figma REST ${res.status}: ${body.slice(0, 200)}`);
