@@ -28,6 +28,7 @@ describe('hints handler', () => {
     const res = handleRequestHint({
       puzzleId: p.id,
       currentBoard: p.puzzle,
+      solution: p.solution,
       level: 'strong',
       difficulty: 'easy',
     });
@@ -36,34 +37,88 @@ describe('hints handler', () => {
     expect(parsed.success).toBe(true);
   }, 20000);
 
-  it('unsolvable board with single wrong cell returns correction hint', () => {
+  it('board with single wrong cell returns correction hint', () => {
     _setHintErrorRate(0);
-    // 矛盾盤面 (同じ行に 1 が 2 個)。1 セル訂正で解ける想定。
-    const bad = new Array(81).fill(0) as number[];
-    bad[0] = 1; bad[1] = 1;
+    const p = makeFreshPuzzle();
+    // 空マスを 1 つ見つけて誤値を入れる (solution と違う値)
+    let target = -1;
+    for (let i = 0; i < 81; i++) if (p.puzzle[i] === 0) { target = i; break; }
+    expect(target).toBeGreaterThanOrEqual(0);
+    const wrongValue = p.solution[target] === 1 ? 2 : 1;
+    const bad = [...p.puzzle];
+    bad[target] = wrongValue;
+
     const res = handleRequestHint({
-      puzzleId: 'ignored-by-mock',
+      puzzleId: p.id,
       currentBoard: bad,
+      solution: p.solution,
       level: 'strong',
       difficulty: 'easy',
+      focusCell: { row: Math.floor(target / 9), col: target % 9 },
     });
     expect(res.status).toBe(200);
     const parsed = hintResponseSchema.safeParse(res.body);
     expect(parsed.success).toBe(true);
     if (parsed.success) {
-      // 訂正 hint が返る：isCorrection=true, cell + number 有り
+      // focusCell で指定した誤りセルが訂正対象になる
       expect(parsed.data.isCorrection).toBe(true);
-      expect(parsed.data.cell).toBeDefined();
-      expect(parsed.data.number).toBeGreaterThanOrEqual(1);
-      expect(parsed.data.number).toBeLessThanOrEqual(9);
-      // 対象セルは 0 or 1 のいずれか (矛盾している 2 セルのどちらか)
-      const idx = parsed.data.cell!.row * 9 + parsed.data.cell!.col;
-      expect([0, 1]).toContain(idx);
+      expect(parsed.data.cell).toEqual({ row: Math.floor(target / 9), col: target % 9 });
+      expect(parsed.data.number).toBe(p.solution[target]);
+    }
+  });
+
+  it('board with MULTIPLE wrong cells still returns a usable hint (regression: 旧版は「提示不可」になっていた)', () => {
+    _setHintErrorRate(0);
+    const p = makeFreshPuzzle();
+    // 空マスを 3 つ見つけて全部誤値を入れる (盤面矛盾)
+    const targets: number[] = [];
+    for (let i = 0; i < 81 && targets.length < 3; i++) if (p.puzzle[i] === 0) targets.push(i);
+    expect(targets.length).toBe(3);
+    const bad = [...p.puzzle];
+    for (const idx of targets) {
+      const correct = p.solution[idx]!;
+      bad[idx] = correct === 1 ? 2 : 1;   // 敢えて間違い
+    }
+
+    const res = handleRequestHint({
+      puzzleId: p.id,
+      currentBoard: bad,
+      solution: p.solution,
+      level: 'strong',
+      difficulty: 'easy',
+    });
+    expect(res.status).toBe(200);
+    const parsed = hintResponseSchema.parse(res.body);
+    // 誤りセル or 空マスのどちらかの hint が来る。number は必ず定義。
+    expect(parsed.cell).toBeDefined();
+    expect(parsed.number).toBeDefined();
+    // 返された cell が誤りセルなら isCorrection=true、空マスなら未指定 (false)。
+    const returnedIdx = parsed.cell!.row * 9 + parsed.cell!.col;
+    const isTargetWrong = targets.includes(returnedIdx);
+    if (isTargetWrong) {
+      expect(parsed.isCorrection).toBe(true);
+      expect(parsed.number).toBe(p.solution[returnedIdx]);
+    } else {
+      // 空マスへの通常 hint
+      expect(bad[returnedIdx]).toBe(0);
+      expect(parsed.number).toBe(p.solution[returnedIdx]);
     }
   });
 
   it('rejects invalid request body', () => {
     const res = handleRequestHint({ garbage: true });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects request without solution field (regression: solution 必須化)', () => {
+    const p = makeFreshPuzzle();
+    const res = handleRequestHint({
+      puzzleId: p.id,
+      currentBoard: p.puzzle,
+      // solution 未指定
+      level: 'strong',
+      difficulty: 'easy',
+    });
     expect(res.status).toBe(400);
   });
 
@@ -73,6 +128,7 @@ describe('hints handler', () => {
     const res = handleRequestHint({
       puzzleId: p.id,
       currentBoard: p.puzzle,
+      solution: p.solution,
       level: 'strong',
       difficulty: 'easy',
     });
@@ -95,6 +151,7 @@ describe('hints handler', () => {
     const res = handleRequestHint({
       puzzleId: p.id,
       currentBoard: p.puzzle,
+      solution: p.solution,
       level: 'strong',
       difficulty: 'easy',
     });
@@ -124,6 +181,7 @@ describe('hints handler', () => {
     const res = handleRequestHint({
       puzzleId: p.id,
       currentBoard: p.puzzle,
+      solution: p.solution,
       level: 'strong',
       difficulty: 'easy',
       focusCell: { row, col },
@@ -143,12 +201,13 @@ describe('hints handler', () => {
     const res = handleRequestHint({
       puzzleId: p.id,
       currentBoard: p.puzzle,
+      solution: p.solution,
       level: 'strong',
       difficulty: 'easy',
       focusCell: { row: Math.floor(firstFilled / 9), col: firstFilled % 9 },
     });
     const hint = hintResponseSchema.parse(res.body);
-    // 埋まっているセルは避けられる
+    // 埋まっているセルは避けられる (initial cell は正解済みなので誤り扱いにもならない)
     expect(hint.cell).toBeDefined();
     const returnedIdx = hint.cell!.row * 9 + hint.cell!.col;
     expect(p.puzzle[returnedIdx]).toBe(0);   // 空マスが返る
@@ -160,6 +219,7 @@ describe('hints handler', () => {
     const res = handleRequestHint({
       puzzleId: p.id,
       currentBoard: p.puzzle,
+      solution: p.solution,
       level: 'weak',
       difficulty: 'easy',
     });

@@ -23,9 +23,13 @@ export const cellCoordSchema = z.object({
 // リクエスト
 // focusCell はユーザーが選択中のセル (optional)。指定されていて空マスなら、
 // hint はそのセルを優先する (「ここで詰まってる」の意図)。
+// solution はクライアントが所持している正解 (puzzle 生成時に受領済み)。
+// これを送ることで Mock 側で currentBoard から solve() する必要がなくなり、
+// 盤面に複数の誤りがあってもヒントを提示できる。
 export const hintRequestSchema = z.object({
   puzzleId: z.string().min(1),
   currentBoard: boardSchema,
+  solution: boardSchema,
   level: hintLevelSchema,
   difficulty: difficultySchema,
   focusCell: cellCoordSchema.optional(),

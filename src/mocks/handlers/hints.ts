@@ -1,22 +1,22 @@
 /**
  * Hints handler (Mock)。
- * - POST /hints → currentBoard + puzzleId から solution を検索、level に応じたヒントを返す
+ * - POST /hints → request.solution から level に応じたヒントを返す。
+ *
+ * === 設計変更（旧: currentBoard から solve() する方式）===
+ *   以前は Mock 側で currentBoard を solve() して解を導出していたため、
+ *   盤面に誤りが 2 箇所以上あると solve() が返答不能で「ヒント提示不可」に落ちていた。
+ *   現在は client が保持している真の solution を request に載せて送るので、
+ *   Mock は常に確実なヒント / 訂正ヒントを返せる。
  *
  * === 信用境界 (仕様書 §4.2, §8.2 → engine/hintVerifier で担保) ===
  *   本番の Azure OpenAI は「もっともらしいが間違ってる」返答をする可能性がある。
  *   Mock は通常 UX では常に正しい hint を返し、
  *   verify 分支は engine/hintVerifier.test.ts と _setHintErrorRate(1) 付きの
  *   mocks/__tests__/hints.test.ts で明示的にテストされる。
- *
- * === 制約 ===
- *   Mock は cache に入ってる puzzle の solution を「知ってる」前提。
- *   実 Azure では AI に current board を送って推論させる形になる。
  */
 
 import { hintRequestSchema, HintResponse } from '@/mocks/schemas/hint';
-import { peersOf } from '@/engine/board';
-import { solve } from '@/engine/solver';
-import type { Board } from '@/types/domain';
+import { peersOf, isValidPlacement } from '@/engine/board';
 
 // エラー注入率。デフォルト 0 (仕様書には無い仕組みなので通常 UX は常に正しい hint)。
 // verify 分支の網羅は engine/hintVerifier.test.ts + mocks/__tests__/hints.test.ts で
@@ -35,74 +35,68 @@ export function _setHintErrorRate(rate: number): number {
   return prev;
 }
 
-/**
- * puzzles cache に依存すると循環依存になるので、cache を参照するのではなく
- * ヒント要求時に「currentBoard から差分を計算してその中の 1 マスを候補にする」形にする。
- * ただし solution は AI 実装での回答なので、Mock では別途 solution を渡す必要がある。
- * → 現状は cache 参照式で実装 (循環避けるため import は関数内で)。
- */
 export function handleRequestHint(rawBody: unknown): { status: number; body: unknown } {
   const parsed = hintRequestSchema.safeParse(rawBody);
   if (!parsed.success) {
     return { status: 400, body: { errorCode: 'INVALID_REQUEST' } };
   }
-  const { currentBoard, level, focusCell } = parsed.data;
+  const { currentBoard, solution, level, focusCell } = parsed.data;
 
-  // solution を currentBoard から solver で計算する (実 Azure OpenAI も current board を推論する形)。
-  // puzzleId には依存しない: mock cache は in-memory でリフレッシュで消えるため、
-  // snapshot 復元経由でも動くようにこの設計にする。
-  const solutions = solve(currentBoard as Board, { maxSolutions: 1 });
-  if (solutions.length === 0) {
-    // 盤面が矛盾している → ユーザーがどこかに間違った数字を入れた。
-    // 訂正 hint: 各埋まってるセルを 1 つずつ空にして solve、成功したセルが「間違ってる可能性」。
-    // そのセルに「正しい数字」を入れるよう提案 (isCorrection=true で client 側は上書き扱い)。
-    const correction = findWrongCell(currentBoard as Board);
-    if (correction) {
-      const { idx, correctNumber } = correction;
-      const row = Math.floor(idx / 9);
-      const col = idx % 9;
-      return {
-        status: 200,
-        body: {
-          level,
-          cell: { row, col },
-          number: correctNumber,
-          isCorrection: true,
-          explanation_i18n: {
-            ja: `${row + 1}行${col + 1}列に誤りがあります。正しくは ${correctNumber} です。`,
-            zh: `第${row + 1}行第${col + 1}列有错误。正确的数字是 ${correctNumber}。`,
-            en: `Wrong entry at row ${row + 1}, col ${col + 1}. Correct value: ${correctNumber}.`,
-          },
-        } as HintResponse & { isCorrection: true },
-      };
-    }
-    // 1 個のセル変更では直せない (複数間違いあり) → 空 hint
-    return { status: 200, body: buildEmptyHint(level) };
-  }
-  const solution = solutions[0]!;
-
-  // 空マスを列挙。既に埋まっているセルはヒント対象外。
+  // 訂正候補: currentBoard に埋まっているが solution と一致しないセル。
+  const wrongIndices: number[] = [];
+  // 空マス候補: currentBoard が 0 のセル。
   const empties: number[] = [];
   for (let i = 0; i < 81; i++) {
-    if (currentBoard[i] === 0) empties.push(i);
-  }
-  if (empties.length === 0) {
-    return { status: 200, body: buildEmptyHint(level) };
+    const cur = currentBoard[i]!;
+    if (cur === 0) {
+      empties.push(i);
+    } else if (cur !== solution[i]) {
+      wrongIndices.push(i);
+    }
   }
 
-  // focusCell が指定されていて空マスなら優先 (ユーザーが「このセルで詰まってる」の合図)。
-  // 指定なし or focusCell が既に埋まっていれば、空マスからランダム。
-  let pickIdx: number;
-  if (focusCell) {
-    const focusIdx = focusCell.row * 9 + focusCell.col;
-    if (currentBoard[focusIdx] === 0) {
-      pickIdx = focusIdx;
-    } else {
-      pickIdx = empties[Math.floor(Math.random() * empties.length)]!;
-    }
-  } else {
-    pickIdx = empties[Math.floor(Math.random() * empties.length)]!;
+  // 完全一致 (全マス正解) → 提示すべきものが無い。
+  // 通常ここには来ない (status='complete' に遷移するので UI が hint ボタンを無効化)。
+  if (empties.length === 0 && wrongIndices.length === 0) {
+    return { status: 200, body: buildAllDoneHint(level) };
   }
+
+  // 「安全な空マス」= 正解を置いても盤面既存の (誤入力含む) peer と衝突しないもの。
+  // これを使わないと、ユーザーが誤って peer に同じ数字を入れているとき hint が verifier で
+  // CONFLICT 拒否され、UI に「AIの回答が無効でした」が出てしまう。
+  const safeEmpties = empties.filter((idx) =>
+    isValidPlacement(currentBoard, idx, solution[idx]!)
+  );
+
+  // 優先度 (誤りセル訂正は最後の手段):
+  //   1. focusCell が誤りセル → 訂正 hint (ユーザーの明示的な選択を尊重)
+  //   2. focusCell が「安全な空マス」→ 埋める hint
+  //   3. safeEmpties が空でない → 安全な空マスからランダム fill
+  //   4. safeEmpties が空 + wrongIndices がある → 誤りセルからランダム correction
+  //   5. 両方空 → 全マス正解済み扱いで buildAllDoneHint フォールバック
+  const focusIdx = focusCell ? focusCell.row * 9 + focusCell.col : null;
+  let pickIdx: number | null = null;
+  let isCorrection = false;
+
+  if (focusIdx !== null && wrongIndices.includes(focusIdx)) {
+    pickIdx = focusIdx;
+    isCorrection = true;
+  } else if (focusIdx !== null && safeEmpties.includes(focusIdx)) {
+    pickIdx = focusIdx;
+    isCorrection = false;
+  } else if (safeEmpties.length > 0) {
+    pickIdx = safeEmpties[Math.floor(Math.random() * safeEmpties.length)]!;
+    isCorrection = false;
+  } else if (wrongIndices.length > 0) {
+    pickIdx = wrongIndices[Math.floor(Math.random() * wrongIndices.length)]!;
+    isCorrection = true;
+  }
+
+  if (pickIdx === null) {
+    // 両方空 → 実質「全マス正解 or 提示可能なマスが存在しない」の防御的フォールバック。
+    return { status: 200, body: buildAllDoneHint(level) };
+  }
+
   const pickRow = Math.floor(pickIdx / 9);
   const pickCol = pickIdx % 9;
   const correctNumber = solution[pickIdx]!;
@@ -112,44 +106,24 @@ export function handleRequestHint(rawBody: unknown): { status: number; body: unk
   const shouldInject = Math.random() < hintErrorRate;
   const injectedNumber = shouldInject ? pickBadNumber(currentBoard, pickIdx, correctNumber) : correctNumber;
 
-  const response: HintResponse = {
+  const response: HintResponse & { isCorrection?: boolean } = {
     level,
     cell: level === 'weak' ? undefined : { row: pickRow, col: pickCol },
     number: level === 'strong' ? injectedNumber : undefined,
-    explanation_i18n: buildExplanation(pickRow, pickCol, injectedNumber, level),
+    explanation_i18n: buildExplanation(pickRow, pickCol, injectedNumber, level, isCorrection),
   };
+  if (isCorrection) response.isCorrection = true;
   return { status: 200, body: response };
 }
 
-/**
- * 矛盾盤面から「間違ってる可能性が高いセル」を 1 つ探す。
- * 各埋まってるセルを 1 つずつ空にして solve を試み、成功したらその中の正解を返す。
- * O(81 × solve 時間) だが盤面 81 セル程度なので許容範囲。
- */
-function findWrongCell(board: Board): { idx: number; correctNumber: number } | null {
-  for (let i = 0; i < 81; i++) {
-    if (board[i] === 0) continue;
-    const tryBoard = [...board] as Board;
-    (tryBoard as number[])[i] = 0;
-    const sols = solve(tryBoard, { maxSolutions: 1 });
-    if (sols.length > 0) {
-      const correctNumber = sols[0]![i]!;
-      if (correctNumber !== board[i]) {
-        return { idx: i, correctNumber };
-      }
-    }
-  }
-  return null;
-}
-
-// weak level で cell/number 省略パターン
-function buildEmptyHint(level: 'weak' | 'medium' | 'strong'): HintResponse {
+// 全て正解済み (レアケース、通常は status=complete で UI が呼ばない)
+function buildAllDoneHint(level: 'weak' | 'medium' | 'strong'): HintResponse {
   return {
     level,
     explanation_i18n: {
-      ja: '空マスがないので提示できません。',
-      zh: '没有空格可以提示。',
-      en: 'No empty cells to hint.',
+      ja: '既に全マス正解です。',
+      zh: '所有格子已全部正确。',
+      en: 'All cells are already correct.',
     },
   };
 }
@@ -167,7 +141,13 @@ function pickBadNumber(board: readonly number[], idx: number, correct: number): 
   return correct;
 }
 
-function buildExplanation(row: number, col: number, num: number, level: 'weak' | 'medium' | 'strong') {
+function buildExplanation(
+  row: number,
+  col: number,
+  num: number,
+  level: 'weak' | 'medium' | 'strong',
+  isCorrection: boolean
+) {
   if (level === 'weak') {
     return {
       ja: '注意深く盤面を見直しましょう。',
@@ -182,9 +162,17 @@ function buildExplanation(row: number, col: number, num: number, level: 'weak' |
       en: `Look near row ${row + 1}, col ${col + 1}.`,
     };
   }
+  if (isCorrection) {
+    return {
+      ja: `${row + 1}行${col + 1}列に誤りがあります。正しくは ${num} です。`,
+      zh: `第${row + 1}行第${col + 1}列有错误。正确的数字是 ${num}。`,
+      en: `Wrong entry at row ${row + 1}, col ${col + 1}. Correct value: ${num}.`,
+    };
+  }
   return {
     ja: `${row + 1}行${col + 1}列には ${num} が入ります。`,
     zh: `第${row + 1}行第${col + 1}列填 ${num}。`,
     en: `Place ${num} at row ${row + 1}, col ${col + 1}.`,
   };
 }
+

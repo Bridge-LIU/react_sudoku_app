@@ -48,17 +48,27 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 // Hint 拒否理由 → 翻訳 key マップ (未知の理由は unknownError にフォールバック)
+// 抢跑系エラー (GAME_STATE_CHANGED / ALREADY_FILLED) は「もう一度押してください」に集約。
+// verifier 由来 (INITIAL_CELL / CONFLICT / NOT_IN_SOLUTION) は AI が誤った回答をした
+// ケースなので invalidResponse に集約。HTTP_xxx は httpClient 由来なので network 扱い。
 function hintRejectionKey(reason: string): string {
+  if (reason.startsWith('HTTP_')) return 'hint.network';
   switch (reason) {
     case 'NO_HINT_AVAILABLE':
-    case 'INCOMPLETE_RESPONSE':
       return 'hint.noHintAvailable';
     case 'TIMEOUT':
       return 'hint.timeout';
     case 'NETWORK':
+    case 'REQUEST_FAILED':
       return 'hint.network';
     case 'INVALID_AI_RESPONSE':
+    case 'INITIAL_CELL':
+    case 'CONFLICT':
+    case 'NOT_IN_SOLUTION':
       return 'hint.invalidResponse';
+    case 'GAME_STATE_CHANGED':
+    case 'ALREADY_FILLED':
+      return 'hint.retryHint';
     default:
       return 'hint.unknownError';
   }
@@ -314,6 +324,7 @@ export default function PlayScreen() {
         const hint = await apiRequestHint({
           puzzleId,
           currentBoard: requestBoard,
+          solution: [...state.solution],
           level: 'strong',
           difficulty,
           focusCell,
@@ -332,32 +343,29 @@ export default function PlayScreen() {
         const index = hint.cell.row * 9 + hint.cell.col;
         const number = hint.number as NonEmptyDigit;
 
-        // isCorrection = true (mock が「間違ってるセルを訂正せよ」と判断) → 訂正フロー
-        // BAF 二重検証: 正しさは verify し、初期セルでないかも確認、そのうえで上書き。
-        if (hint.isCorrection) {
-          // 初期セルへの訂正は絶対に拒否 (仕様書 §8.2)
-          if (fresh.initialBoard[index] !== 0) {
-            dispatch({ type: 'HINT_REJECTED', payload: { reason: 'INITIAL_CELL' } });
-            return;
-          }
-          // number が solution と一致するか engine で確認
-          if (fresh.solution[index] !== number) {
-            dispatch({ type: 'HINT_REJECTED', payload: { reason: 'NOT_IN_SOLUTION' } });
-            return;
-          }
-          dispatch({ type: 'HINT_CORRECTION_RECEIVED', payload: { index, number } });
+        // fill / correction を verifyHint 単一関数で統一検証 (BAF)。
+        // - fill モード: current[idx]===0 前提、通常配置バリデーション
+        // - correction モード: current[idx]!==0 前提、自セルを 0 に戻した盤面で衝突判定
+        const mode = hint.isCorrection ? 'correction' : 'fill';
+        const verdict = verifyHint(
+          fresh.initialBoard, fresh.currentBoard, fresh.solution,
+          { cell: hint.cell, number },
+          mode
+        );
+        if (!verdict.ok) {
+          dispatch({ type: 'HINT_REJECTED', payload: { reason: verdict.reason } });
           return;
         }
-
-        // 通常の空マス hint: verifyHint で厳密検証
-        const verdict = verifyHint(fresh.initialBoard, fresh.currentBoard, fresh.solution, {
-          cell: hint.cell,
-          number,
-        });
-        if (verdict.ok) {
+        // correction モードなのに実際は空セル → mock が想定した「誤りセル」がユーザー操作で消滅済み。
+        // 訂正すべき対象が無いので通常 hint 扱いに降格 (dispatch は HINT_RECEIVED)。
+        if (hint.isCorrection && fresh.currentBoard[index] === 0) {
           dispatch({ type: 'HINT_RECEIVED', payload: { index, number } });
+          return;
+        }
+        if (hint.isCorrection) {
+          dispatch({ type: 'HINT_CORRECTION_RECEIVED', payload: { index, number } });
         } else {
-          dispatch({ type: 'HINT_REJECTED', payload: { reason: verdict.reason } });
+          dispatch({ type: 'HINT_RECEIVED', payload: { index, number } });
         }
       } catch (err) {
         // エラー種別で reason を区別 (§12.1 ユーザー向け vs 内部ログの分離)

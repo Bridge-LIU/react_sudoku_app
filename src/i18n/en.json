@@ -25,6 +25,7 @@
     "noHintAvailable": "No hint available. Please re-check the board.",
     "timeout": "AI response timeout",
     "network": "Network error",
+    "retryHint": "The board changed. Please press Hint again.",
     "unknownError": "Failed to get hint"
   },
   "error": {
