@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canonicalize, sha256, findNode, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint } from './figma-check.js';
+import { canonicalize, sha256, findNode, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema } from './figma-check.js';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -200,5 +200,61 @@ describe('assertDiffDisjoint', () => {
     expect(() => assertDiffDisjoint({
       changed: [], added: ['x'], removed: ['x'],
     })).toThrow(/overlap/);
+  });
+});
+
+describe('StateSchema', () => {
+  it('accepts valid state', () => {
+    const valid = {
+      checkedAt: '2026-08-10T14:00:00Z',
+      workflowRunId: 123,
+      fileKey: 'abc',
+      figmaVersion: '1000',
+      figmaLastModified: '2026-08-10T00:00:00Z',
+      treeHash: 'sha256:' + 'a'.repeat(64),
+      metaHash: 'sha256:' + 'c'.repeat(64),
+      perFrameHash: { '0:1': 'sha256:' + 'b'.repeat(64) },
+      changedSinceLastRun: ['0:1'],
+      added: [],
+      removed: [],
+      metaChanged: false,
+    };
+    expect(() => StateSchema.parse(valid)).not.toThrow();
+  });
+
+  it('rejects invalid hash format', () => {
+    const invalid = {
+      checkedAt: '2026-08-10T14:00:00Z',
+      workflowRunId: null,
+      fileKey: 'abc',
+      figmaVersion: '1000',
+      figmaLastModified: '2026-08-10T00:00:00Z',
+      treeHash: 'not-a-hash',
+      metaHash: 'sha256:' + 'c'.repeat(64),
+      perFrameHash: {},
+      changedSinceLastRun: [],
+      added: [],
+      removed: [],
+      metaChanged: false,
+    };
+    expect(() => StateSchema.parse(invalid)).toThrow();
+  });
+});
+
+describe('ConfigSchema', () => {
+  it('accepts valid config', () => {
+    expect(() => ConfigSchema.parse({
+      fileKey: 'abc',
+      frames: { '0:1': 'src/A.tsx' },
+      lastSyncedVersion: null,
+    })).not.toThrow();
+  });
+
+  it('accepts config with lastSyncedVersion set', () => {
+    expect(() => ConfigSchema.parse({
+      fileKey: 'abc',
+      frames: {},
+      lastSyncedVersion: '12345',
+    })).not.toThrow();
   });
 });

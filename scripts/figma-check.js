@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import stringify from 'fast-json-stable-stringify';
+import { z } from 'zod';
 
 export function canonicalize(obj) {
   return stringify(obj);
@@ -103,3 +104,46 @@ export function assertDiffDisjoint({ changed, added, removed }) {
     if (r.has(id)) throw new Error(`Diff set overlap: ${id} in added and removed`);
   }
 }
+
+export async function fetchFigmaDepth1(fileKey, token) {
+  const url = `https://api.figma.com/v1/files/${fileKey}?depth=1`;
+  const res = await fetch(url, { headers: { 'X-Figma-Token': token } });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Figma REST ${res.status}: ${body.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
+export async function fetchFigmaFull(fileKey, token) {
+  const url = `https://api.figma.com/v1/files/${fileKey}`;
+  const res = await fetch(url, { headers: { 'X-Figma-Token': token } });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Figma REST ${res.status}: ${body.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
+export const StateSchema = z.object({
+  checkedAt: z.string(),
+  workflowRunId: z.number().nullable(),
+  fileKey: z.string(),
+  figmaVersion: z.string(),
+  figmaLastModified: z.string(),
+  treeHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  metaHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  perFrameHash: z.record(z.string(), z.string().regex(/^sha256:[a-f0-9]{64}$/)),
+  changedSinceLastRun: z.array(z.string()),
+  added: z.array(z.string()),
+  removed: z.array(z.string()),
+  metaChanged: z.boolean(),
+});
+
+export const ConfigSchema = z.object({
+  fileKey: z.string(),
+  fileName: z.string().optional(),
+  frames: z.record(z.string(), z.string()),
+  assetsRoot: z.string().optional(),
+  lastSyncedVersion: z.string().nullable(),
+});
