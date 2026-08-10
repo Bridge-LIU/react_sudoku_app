@@ -39,3 +39,32 @@ export function computeMetaHash(fileResponse) {
   };
   return sha256(canonicalize(meta));
 }
+
+export function diffHashes(prev, curr) {
+  const prevMap = prev || {};
+  const prevKeys = new Set(Object.keys(prevMap));
+  const currKeys = new Set(Object.keys(curr));
+
+  const changed = [];
+  const added = [];
+  const removed = [];
+
+  for (const id of currKeys) {
+    if (!prevKeys.has(id)) {
+      added.push(id);
+    } else if (prevMap[id] !== curr[id]) {
+      changed.push(id);
+    }
+  }
+  for (const id of prevKeys) {
+    if (!currKeys.has(id)) {
+      removed.push(id);
+    }
+  }
+
+  return {
+    changed: changed.sort(),
+    added: added.sort(),
+    removed: removed.sort(),
+  };
+}

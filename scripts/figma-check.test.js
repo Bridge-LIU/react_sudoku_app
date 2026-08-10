@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canonicalize, sha256, findNode, computePerFrameHash, computeMetaHash } from './figma-check.js';
+import { canonicalize, sha256, findNode, computePerFrameHash, computeMetaHash, diffHashes } from './figma-check.js';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -110,5 +110,45 @@ describe('computeMetaHash', () => {
   it('v1 fixtures have empty meta, hash is stable', () => {
     const h = computeMetaHash(v1);
     expect(h).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+});
+
+describe('diffHashes', () => {
+  it('test_no_change: identical hashes → all empty', () => {
+    const prev = { '0:1': 'a', '6:6': 'b' };
+    const curr = { '0:1': 'a', '6:6': 'b' };
+    expect(diffHashes(prev, curr)).toEqual({ changed: [], added: [], removed: [] });
+  });
+
+  it('test_frame_modified: one hash differs → changed', () => {
+    const prev = { '0:1': 'a', '6:6': 'b' };
+    const curr = { '0:1': 'a', '6:6': 'B_MODIFIED' };
+    expect(diffHashes(prev, curr)).toEqual({ changed: ['6:6'], added: [], removed: [] });
+  });
+
+  it('test_frame_added: new key → added', () => {
+    const prev = { '0:1': 'a' };
+    const curr = { '0:1': 'a', '9:999': 'new' };
+    expect(diffHashes(prev, curr)).toEqual({ changed: [], added: ['9:999'], removed: [] });
+  });
+
+  it('test_frame_removed: missing key → removed', () => {
+    const prev = { '0:1': 'a', '6:6': 'b' };
+    const curr = { '0:1': 'a' };
+    expect(diffHashes(prev, curr)).toEqual({ changed: [], added: [], removed: ['6:6'] });
+  });
+
+  it('handles null prev (first run, treat all as added)', () => {
+    const curr = { '0:1': 'a', '6:6': 'b' };
+    expect(diffHashes(null, curr)).toEqual({ changed: [], added: ['0:1', '6:6'], removed: [] });
+  });
+
+  it('handles all three simultaneously', () => {
+    const prev = { '0:1': 'a', '6:6': 'b', '6:410': 'c' };
+    const curr = { '0:1': 'a', '6:6': 'B_MOD', '9:999': 'd' };
+    const result = diffHashes(prev, curr);
+    expect(result.changed).toEqual(['6:6']);
+    expect(result.added).toEqual(['9:999']);
+    expect(result.removed).toEqual(['6:410']);
   });
 });
