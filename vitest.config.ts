@@ -19,6 +19,12 @@ export default defineConfig({
     coverage: { reporter: ['text', 'html'] },
   },
   resolve: {
-    alias: { '@': path.resolve(__dirname, 'src') },
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      // expo-localization は Flow 構文を含むため Vitest でパースできない。
+      // Node 環境のテストでは detectInitialLanguage() は 'ja' デフォルト値のみ使うので、
+      // シンプルなスタブに差し替える。
+      'expo-localization': path.resolve(__dirname, 'src/__mocks__/expo-localization.ts'),
+    },
   },
 });
