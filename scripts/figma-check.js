@@ -146,7 +146,9 @@ export const StateSchema = z.object({
 export const ConfigSchema = z.object({
   fileKey: z.string(),
   fileName: z.string().optional(),
-  frames: z.record(z.string(), z.string()),
+  // frames: 監視対象の Figma nodeId 一覧。React ファイルへのマッピングは記録しない
+  // — Claude が同期時に codebase を探索して該当ファイルを特定する（YAGNI + Sudoku scale）。
+  frames: z.array(z.string()),
   assetsRoot: z.string().optional(),
   lastSyncedVersion: z.string().nullable(),
 });
@@ -158,7 +160,7 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
   // Load and validate config
   const rawConfig = JSON.parse(await readFile(configPath, 'utf8'));
   const config = ConfigSchema.parse(rawConfig);
-  const registeredIds = Object.keys(config.frames);
+  const registeredIds = config.frames;
 
   // Load previous state if provided (may not exist on first run)
   let prevState = null;

@@ -244,20 +244,28 @@ describe('StateSchema', () => {
 });
 
 describe('ConfigSchema', () => {
-  it('accepts valid config', () => {
+  it('accepts valid config with frames array', () => {
     expect(() => ConfigSchema.parse({
       fileKey: 'abc',
-      frames: { '0:1': 'src/A.tsx' },
+      frames: ['0:1', '6:6'],
       lastSyncedVersion: null,
     })).not.toThrow();
   });
 
-  it('accepts config with lastSyncedVersion set', () => {
+  it('accepts config with empty frames array', () => {
     expect(() => ConfigSchema.parse({
       fileKey: 'abc',
-      frames: {},
+      frames: [],
       lastSyncedVersion: '12345',
     })).not.toThrow();
+  });
+
+  it('rejects legacy map-shaped frames', () => {
+    expect(() => ConfigSchema.parse({
+      fileKey: 'abc',
+      frames: { '0:1': 'src/A.tsx' },
+      lastSyncedVersion: null,
+    })).toThrow();
   });
 });
 
@@ -274,11 +282,7 @@ describe('runCheck integration', () => {
 
     await writeFile(configPath, JSON.stringify({
       fileKey: 'testkey',
-      frames: {
-        '0:1': 'src/pages/JP.tsx',
-        '6:6': 'src/pages/ZH.tsx',
-        '6:410': 'src/pages/EN.tsx',
-      },
+      frames: ['0:1', '6:6', '6:410'],
       lastSyncedVersion: null,
     }));
 
