@@ -108,9 +108,13 @@ export function assertDiffDisjoint({ changed, added, removed }) {
   }
 }
 
-// Rate limit / transient error retry (I3 fix from code review + 2026-08-10 late 実測):
+// Rate limit / transient error retry (I3 fix + 2026-08-10 night 実測):
 // Figma REST は非公開 rate limit あり、短時間連打で 429。5xx は upstream 一時障害。
-// 両方共 exponential backoff で 3 回まで retry する。Retry-After header 優先。
+// 両方共 exponential backoff で 3 回まで retry する。Retry-After header あれば優先、
+// ただし 60 秒を超える場合は「長期 ban」と判断して即諦める（次回 cron に任せる）。
+// 実測で Figma が Retry-After: 374210s（4.3 日）を返した事例あり、cap 必須。
+const MAX_RETRY_WAIT_MS = 60000;
+
 async function fetchWithRetry(url, options, retries = 3) {
   for (let attempt = 0; attempt < retries; attempt++) {
     const res = await fetch(url, options);
@@ -118,8 +122,16 @@ async function fetchWithRetry(url, options, retries = 3) {
     // 4xx (excluding 429) is non-retryable
     if (res.status !== 429 && res.status < 500) return res;
     if (attempt === retries - 1) return res; // 最終試行、そのまま返す
+
     const retryAfter = parseInt(res.headers.get('retry-after') || '0', 10);
-    const wait = retryAfter > 0 ? retryAfter * 1000 : Math.pow(2, attempt) * 5000;
+    // Retry-After が 60s 超 = 長期制限、retry しても無意味
+    if (retryAfter * 1000 > MAX_RETRY_WAIT_MS) {
+      console.warn(`Retry-After ${retryAfter}s exceeds ${MAX_RETRY_WAIT_MS}ms cap, aborting retries`);
+      return res;
+    }
+    const wait = retryAfter > 0
+      ? Math.min(retryAfter * 1000, MAX_RETRY_WAIT_MS)
+      : Math.min(Math.pow(2, attempt) * 5000, MAX_RETRY_WAIT_MS);
     console.warn(`Figma REST ${res.status}, retry ${attempt + 1}/${retries} after ${wait}ms`);
     await new Promise((r) => setTimeout(r, wait));
   }
