@@ -628,4 +628,63 @@ describe('runCheck v2 integration', () => {
 
     globalThis.fetch = origFetch;
   });
+
+  it('treats v1→v2 transition (prev has empty textSnapshot) as baseline', async () => {
+    process.env.FIGMA_TOKEN = 'test-token';
+
+    // v1-like prev state with empty textSnapshot (from early-exit path before fix)
+    // and different figmaVersion so full fetch triggers
+    const v1LikePrev = {
+      checkedAt: '2026-08-17T00:00:00Z',
+      workflowRunId: null,
+      fileKey: 'k',
+      figmaVersion: 'old-version',
+      figmaLastModified: '2026-08-01T00:00:00Z',
+      treeHash: 'sha256:' + 'a'.repeat(64),
+      metaHash: 'sha256:' + 'b'.repeat(64),
+      perFrameHash: {},
+      changedSinceLastRun: [],
+      added: [],
+      removed: [],
+      metaChanged: false,
+      schemaVersion: 2,
+      textSnapshot: {}, // ← v1→v2 transition の状態
+      changedTexts: [],
+    };
+
+    const tree = {
+      name: 'Sudoku', lastModified: '2026-08-17T00:00:00Z', version: 'new-version',
+      styles: {}, components: {}, componentSets: {},
+      document: {
+        id: '0:0', type: 'DOCUMENT',
+        children: [
+          {
+            id: '0:1', type: 'CANVAS',
+            children: [{ id: '103:4', type: 'TEXT', characters: 'Hello' }],
+          },
+        ],
+      },
+    };
+
+    const configPath = join(testTmpDir, 'config-v12.json');
+    const prevPath = join(testTmpDir, 'prev-v12.json');
+    const outPath = join(testTmpDir, 'out-v12.json');
+    await writeFile(configPath, JSON.stringify({ fileKey: 'k', frames: ['0:1'], lastSyncedVersion: null }));
+    await writeFile(prevPath, JSON.stringify(v1LikePrev));
+
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true, status: 200, json: async () => tree, text: async () => '', headers: new Map(),
+    }));
+
+    await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    const state = JSON.parse(await readFile(outPath, 'utf8'));
+
+    // textSnapshot は今回の fetch で正しく populated
+    expect(state.textSnapshot).toEqual({ '0:1': { '103:4': { text: 'Hello' } } });
+    // baseline なので changedTexts は空（"全 text as added" 事故防止）
+    expect(state.changedTexts).toEqual([]);
+
+    globalThis.fetch = origFetch;
+  });
 });

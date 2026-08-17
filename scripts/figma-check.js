@@ -282,8 +282,11 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
   const depth1 = await fetchFigmaDepth1(config.fileKey, token);
   assertFigmaResponse(depth1);
 
-  // Early exit if version unchanged
-  if (prevState && prevState.figmaVersion === depth1.version) {
+  // Early exit if version unchanged AND textSnapshot already populated
+  // (v1→v2 transition: prevState is v1 (no textSnapshot) → skip early exit, force full fetch
+  //  to build textSnapshot baseline; next sync's diff will then be accurate)
+  const prevHasTextSnapshot = prevState?.textSnapshot && Object.keys(prevState.textSnapshot).length > 0;
+  if (prevState && prevState.figmaVersion === depth1.version && prevHasTextSnapshot) {
     const state = {
       ...prevState,
       checkedAt: new Date().toISOString(),
@@ -295,7 +298,7 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
       metaChanged: false,
       // v2: preserve textSnapshot, empty changedTexts (no change)
       schemaVersion: 2,
-      textSnapshot: prevState.textSnapshot || {},
+      textSnapshot: prevState.textSnapshot,
       changedTexts: [],
     };
     StateSchema.parse(state);
@@ -322,13 +325,15 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
   const metaChanged = prevState ? (prevState.metaHash !== currMetaHash) : true;
 
   // v2: text snapshot + diff
-  // 「first run（prev なし）」は baseline とみなし changedTexts=[] にする
-  // → skill が「全 text を added として apply」する事故を防ぐ
+  // baseline とみなす条件：
+  //  - prev state なし（first run）
+  //  - prev.textSnapshot が空 or 未定義（v1→v2 transition の初回 full fetch）
+  // baseline 時は changedTexts=[] とし、skill が「全 text を added として apply」する事故を防ぐ
   const currTextSnapshot = extractTextSnapshot(full.document, registeredIds);
-  const prevTextSnapshot = prevState?.textSnapshot || null;
-  const changedTexts = prevTextSnapshot === null
-    ? []
-    : diffTextSnapshots(prevTextSnapshot, currTextSnapshot);
+  const prevHasUsableSnapshot = prevState?.textSnapshot && Object.keys(prevState.textSnapshot).length > 0;
+  const changedTexts = prevHasUsableSnapshot
+    ? diffTextSnapshots(prevState.textSnapshot, currTextSnapshot)
+    : [];
 
   // Build state
   const state = {
