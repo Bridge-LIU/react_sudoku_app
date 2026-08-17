@@ -1,5 +1,4 @@
 {
-  "home": { "title": "多页更新测试" },
   "difficulty": { "title": "选择难度", "label": "难度", "easy": "初级", "medium": "中级", "hard": "高级" },
   "game": {
     "timer": "已用时",
