@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-08-17T08:33:50.096Z",
-  "workflowRunId": 32010917744,
+  "checkedAt": "2026-08-17T08:36:01.914Z",
+  "workflowRunId": 32011101275,
   "fileKey": "cwmewA4MTWktw6E7uhQFK2",
   "figmaVersion": "2388601338743275440",
   "figmaLastModified": "2026-08-17T08:33:46Z",
@@ -11,11 +11,7 @@
     "6:6": "sha256:f072393fd43b770f0584fe840098c2a2a05b61141635377940380cacc511fbae",
     "6:410": "sha256:426380fd5e9ebfe101941b36a8f8c6f72aef3d9f9cad7a313b57f776e6947f02"
   },
-  "changedSinceLastRun": [
-    "0:1",
-    "6:410",
-    "6:6"
-  ],
+  "changedSinceLastRun": [],
   "added": [],
   "removed": [],
   "metaChanged": false,
