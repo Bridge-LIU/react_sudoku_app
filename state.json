@@ -1,17 +1,21 @@
 {
-  "checkedAt": "2026-08-17T07:45:03.795Z",
-  "workflowRunId": 32007147893,
+  "checkedAt": "2026-08-17T08:33:50.096Z",
+  "workflowRunId": 32010917744,
   "fileKey": "cwmewA4MTWktw6E7uhQFK2",
-  "figmaVersion": "2388584463272225712",
-  "figmaLastModified": "2026-08-17T07:01:30Z",
-  "treeHash": "sha256:d5fa45d87c7b5b509d9e32af3a3555514a6d85f9c317d9a555a8564a4c238fa1",
+  "figmaVersion": "2388601338743275440",
+  "figmaLastModified": "2026-08-17T08:33:46Z",
+  "treeHash": "sha256:d9184dd27be1833ac7d0ac0796da5078f8b75946daaa4e66a9d77470d661b7dc",
   "metaHash": "sha256:52f318f3ec699658e94a607f3a41de673b3347b55ae0d44ba1561a6e7be9c332",
   "perFrameHash": {
-    "0:1": "sha256:7b049a5d64c749ffddd093bd5272502ddea07cccce880c29b14d62c4c77fd1ca",
-    "6:6": "sha256:df31f6fd6ebfd8f9899adf72b0a8b05f621d566d8b6179740cea56b67c353598",
-    "6:410": "sha256:f78f15e2058f56a430d095ba92c3ab8718b14a357e48acb55b8242b2abed63fc"
+    "0:1": "sha256:e01ca8c36595ac37e71b1eaadf5ec99d22e03fd537164cdbe57dd28530da5f30",
+    "6:6": "sha256:f072393fd43b770f0584fe840098c2a2a05b61141635377940380cacc511fbae",
+    "6:410": "sha256:426380fd5e9ebfe101941b36a8f8c6f72aef3d9f9cad7a313b57f776e6947f02"
   },
-  "changedSinceLastRun": [],
+  "changedSinceLastRun": [
+    "0:1",
+    "6:410",
+    "6:6"
+  ],
   "added": [],
   "removed": [],
   "metaChanged": false,
@@ -666,11 +670,11 @@
       "12:3989": {
         "text": "本当にリセットしますか？自動更新テスト 1112"
       },
-      "12:3999": {
-        "text": "キャンセル"
-      },
       "12:4002": {
         "text": "OK"
+      },
+      "12:3999": {
+        "text": "キャンセル"
       },
       "18:10": {
         "text": "難易度"
@@ -873,9 +877,6 @@
       "18:380": {
         "text": "メモ"
       },
-      "108:59": {
-        "text": "メモ"
-      },
       "18:384": {
         "text": "元に戻す"
       },
@@ -888,17 +889,20 @@
       "18:393": {
         "text": "リセット"
       },
+      "108:59": {
+        "text": "メモ"
+      },
       "108:56": {
-        "text": "難易度を選択"
+        "text": "難易度を選択1"
       },
       "110:60": {
-        "text": "新しいゲーム v6"
+        "text": "新しいゲーム v78979"
       },
       "108:55": {
-        "text": "難易度を選択"
+        "text": "難易度を選択2"
       },
       "6:11": {
-        "text": "難易度を選択"
+        "text": "難易度を選択3"
       },
       "6:15": {
         "text": "初級"
@@ -1492,336 +1496,6 @@
       },
       "110:71": {
         "text": "EN"
-      },
-      "112:507": {
-        "text": "难度"
-      },
-      "112:509": {
-        "text": "中级"
-      },
-      "112:512": {
-        "text": "已用时"
-      },
-      "112:514": {
-        "text": "15:34"
-      },
-      "112:517": {
-        "text": "错误"
-      },
-      "112:519": {
-        "text": "0"
-      },
-      "112:522": {
-        "text": "提示"
-      },
-      "112:524": {
-        "text": "50"
-      },
-      "112:530": {
-        "text": "7"
-      },
-      "112:534": {
-        "text": "6"
-      },
-      "112:538": {
-        "text": "4"
-      },
-      "112:542": {
-        "text": "1"
-      },
-      "112:546": {
-        "text": "3"
-      },
-      "112:550": {
-        "text": "9"
-      },
-      "112:554": {
-        "text": "2"
-      },
-      "112:558": {
-        "text": "5"
-      },
-      "112:562": {
-        "text": "8"
-      },
-      "112:567": {
-        "text": "1"
-      },
-      "112:571": {
-        "text": "5"
-      },
-      "112:575": {
-        "text": "3"
-      },
-      "112:579": {
-        "text": "2"
-      },
-      "112:583": {
-        "text": "8"
-      },
-      "112:587": {
-        "text": "6"
-      },
-      "112:591": {
-        "text": "9"
-      },
-      "112:595": {
-        "text": "4"
-      },
-      "112:599": {
-        "text": "7"
-      },
-      "112:604": {
-        "text": "8"
-      },
-      "112:608": {
-        "text": "2"
-      },
-      "112:612": {
-        "text": "9"
-      },
-      "112:616": {
-        "text": "7"
-      },
-      "112:620": {
-        "text": "5"
-      },
-      "112:624": {
-        "text": "4"
-      },
-      "112:628": {
-        "text": "6"
-      },
-      "112:632": {
-        "text": "1"
-      },
-      "112:636": {
-        "text": "3"
-      },
-      "112:641": {
-        "text": "3"
-      },
-      "112:645": {
-        "text": "1"
-      },
-      "112:649": {
-        "text": "6"
-      },
-      "112:653": {
-        "text": "4"
-      },
-      "112:657": {
-        "text": "2"
-      },
-      "112:661": {
-        "text": "5"
-      },
-      "112:665": {
-        "text": "8"
-      },
-      "112:669": {
-        "text": "7"
-      },
-      "112:673": {
-        "text": "9"
-      },
-      "112:678": {
-        "text": "5"
-      },
-      "112:682": {
-        "text": "8"
-      },
-      "112:686": {
-        "text": "7"
-      },
-      "112:690": {
-        "text": "9"
-      },
-      "112:694": {
-        "text": "1"
-      },
-      "112:698": {
-        "text": "3"
-      },
-      "112:702": {
-        "text": "4"
-      },
-      "112:706": {
-        "text": "6"
-      },
-      "112:710": {
-        "text": "2"
-      },
-      "112:715": {
-        "text": "9"
-      },
-      "112:719": {
-        "text": "4"
-      },
-      "112:723": {
-        "text": "2"
-      },
-      "112:727": {
-        "text": "8"
-      },
-      "112:731": {
-        "text": "6"
-      },
-      "112:735": {
-        "text": "7"
-      },
-      "112:739": {
-        "text": "5"
-      },
-      "112:743": {
-        "text": "3"
-      },
-      "112:747": {
-        "text": "1"
-      },
-      "112:752": {
-        "text": "2"
-      },
-      "112:756": {
-        "text": "7"
-      },
-      "112:760": {
-        "text": "1"
-      },
-      "112:764": {
-        "text": "6"
-      },
-      "112:768": {
-        "text": "4"
-      },
-      "112:772": {
-        "text": "8"
-      },
-      "112:776": {
-        "text": "3"
-      },
-      "112:780": {
-        "text": "9"
-      },
-      "112:784": {
-        "text": "5"
-      },
-      "112:789": {
-        "text": "4"
-      },
-      "112:793": {
-        "text": "9"
-      },
-      "112:797": {
-        "text": "5"
-      },
-      "112:801": {
-        "text": "3"
-      },
-      "112:805": {
-        "text": "7"
-      },
-      "112:809": {
-        "text": "2"
-      },
-      "112:813": {
-        "text": "1"
-      },
-      "112:817": {
-        "text": "8"
-      },
-      "112:821": {
-        "text": "6"
-      },
-      "112:826": {
-        "text": "6"
-      },
-      "112:830": {
-        "text": "3"
-      },
-      "112:834": {
-        "text": "8"
-      },
-      "112:838": {
-        "text": "5"
-      },
-      "112:842": {
-        "text": "9"
-      },
-      "112:846": {
-        "text": "1"
-      },
-      "112:850": {
-        "text": "7"
-      },
-      "112:854": {
-        "text": "2"
-      },
-      "112:858": {
-        "text": "4"
-      },
-      "112:863": {
-        "text": "1"
-      },
-      "112:866": {
-        "text": "2"
-      },
-      "112:869": {
-        "text": "3"
-      },
-      "112:872": {
-        "text": "4"
-      },
-      "112:875": {
-        "text": "5"
-      },
-      "112:878": {
-        "text": "6"
-      },
-      "112:881": {
-        "text": "7"
-      },
-      "112:884": {
-        "text": "8"
-      },
-      "112:887": {
-        "text": "9"
-      },
-      "112:891": {
-        "text": "删除"
-      },
-      "112:894": {
-        "text": "备注"
-      },
-      "112:898": {
-        "text": "撤销"
-      },
-      "112:901": {
-        "text": "重做"
-      },
-      "112:904": {
-        "text": "提示"
-      },
-      "112:907": {
-        "text": "重置"
-      },
-      "112:912": {
-        "text": "🎉"
-      },
-      "112:914": {
-        "text": "完成！"
-      },
-      "112:917": {
-        "text": "难度：中级 / 用时：15:34 / 错误：0 / 提示：50"
-      },
-      "112:922": {
-        "text": "再玩一次"
-      },
-      "112:925": {
-        "text": "更换难度"
-      },
-      "112:928": {
-        "text": "关闭"
       }
     },
     "6:410": {
@@ -2715,8 +2389,1907 @@
       },
       "6:436": {
         "text": "EN"
+      },
+      "123:8": {
+        "text": "难度"
+      },
+      "123:10": {
+        "text": "中级"
+      },
+      "123:13": {
+        "text": "已用时"
+      },
+      "123:15": {
+        "text": "15:34"
+      },
+      "123:18": {
+        "text": "错误"
+      },
+      "123:20": {
+        "text": "0"
+      },
+      "123:23": {
+        "text": "提示"
+      },
+      "123:25": {
+        "text": "50"
+      },
+      "123:31": {
+        "text": "7"
+      },
+      "123:35": {
+        "text": "6"
+      },
+      "123:39": {
+        "text": "4"
+      },
+      "123:43": {
+        "text": "1"
+      },
+      "123:47": {
+        "text": "3"
+      },
+      "123:51": {
+        "text": "9"
+      },
+      "123:55": {
+        "text": "2"
+      },
+      "123:59": {
+        "text": "5"
+      },
+      "123:63": {
+        "text": "8"
+      },
+      "123:68": {
+        "text": "1"
+      },
+      "123:72": {
+        "text": "5"
+      },
+      "123:76": {
+        "text": "3"
+      },
+      "123:80": {
+        "text": "2"
+      },
+      "123:84": {
+        "text": "8"
+      },
+      "123:88": {
+        "text": "6"
+      },
+      "123:92": {
+        "text": "9"
+      },
+      "123:96": {
+        "text": "4"
+      },
+      "123:100": {
+        "text": "7"
+      },
+      "123:105": {
+        "text": "8"
+      },
+      "123:109": {
+        "text": "2"
+      },
+      "123:113": {
+        "text": "9"
+      },
+      "123:117": {
+        "text": "7"
+      },
+      "123:121": {
+        "text": "5"
+      },
+      "123:125": {
+        "text": "4"
+      },
+      "123:129": {
+        "text": "6"
+      },
+      "123:133": {
+        "text": "1"
+      },
+      "123:137": {
+        "text": "3"
+      },
+      "123:142": {
+        "text": "3"
+      },
+      "123:146": {
+        "text": "1"
+      },
+      "123:150": {
+        "text": "6"
+      },
+      "123:154": {
+        "text": "4"
+      },
+      "123:158": {
+        "text": "2"
+      },
+      "123:162": {
+        "text": "5"
+      },
+      "123:166": {
+        "text": "8"
+      },
+      "123:170": {
+        "text": "7"
+      },
+      "123:174": {
+        "text": "9"
+      },
+      "123:179": {
+        "text": "5"
+      },
+      "123:183": {
+        "text": "8"
+      },
+      "123:187": {
+        "text": "7"
+      },
+      "123:191": {
+        "text": "9"
+      },
+      "123:195": {
+        "text": "1"
+      },
+      "123:199": {
+        "text": "3"
+      },
+      "123:203": {
+        "text": "4"
+      },
+      "123:207": {
+        "text": "6"
+      },
+      "123:211": {
+        "text": "2"
+      },
+      "123:216": {
+        "text": "9"
+      },
+      "123:220": {
+        "text": "4"
+      },
+      "123:224": {
+        "text": "2"
+      },
+      "123:228": {
+        "text": "8"
+      },
+      "123:232": {
+        "text": "6"
+      },
+      "123:236": {
+        "text": "7"
+      },
+      "123:240": {
+        "text": "5"
+      },
+      "123:244": {
+        "text": "3"
+      },
+      "123:248": {
+        "text": "1"
+      },
+      "123:253": {
+        "text": "2"
+      },
+      "123:257": {
+        "text": "7"
+      },
+      "123:261": {
+        "text": "1"
+      },
+      "123:265": {
+        "text": "6"
+      },
+      "123:269": {
+        "text": "4"
+      },
+      "123:273": {
+        "text": "8"
+      },
+      "123:277": {
+        "text": "3"
+      },
+      "123:281": {
+        "text": "9"
+      },
+      "123:285": {
+        "text": "5"
+      },
+      "123:290": {
+        "text": "4"
+      },
+      "123:294": {
+        "text": "9"
+      },
+      "123:298": {
+        "text": "5"
+      },
+      "123:302": {
+        "text": "3"
+      },
+      "123:306": {
+        "text": "7"
+      },
+      "123:310": {
+        "text": "2"
+      },
+      "123:314": {
+        "text": "1"
+      },
+      "123:318": {
+        "text": "8"
+      },
+      "123:322": {
+        "text": "6"
+      },
+      "123:327": {
+        "text": "6"
+      },
+      "123:331": {
+        "text": "3"
+      },
+      "123:335": {
+        "text": "8"
+      },
+      "123:339": {
+        "text": "5"
+      },
+      "123:343": {
+        "text": "9"
+      },
+      "123:347": {
+        "text": "1"
+      },
+      "123:351": {
+        "text": "7"
+      },
+      "123:355": {
+        "text": "2"
+      },
+      "123:359": {
+        "text": "4"
+      },
+      "123:364": {
+        "text": "1"
+      },
+      "123:367": {
+        "text": "2"
+      },
+      "123:370": {
+        "text": "3"
+      },
+      "123:373": {
+        "text": "4"
+      },
+      "123:376": {
+        "text": "5"
+      },
+      "123:379": {
+        "text": "6"
+      },
+      "123:382": {
+        "text": "7"
+      },
+      "123:385": {
+        "text": "8"
+      },
+      "123:388": {
+        "text": "9"
+      },
+      "123:392": {
+        "text": "删除"
+      },
+      "123:395": {
+        "text": "备注"
+      },
+      "123:399": {
+        "text": "撤销"
+      },
+      "123:402": {
+        "text": "重做"
+      },
+      "123:405": {
+        "text": "提示"
+      },
+      "123:408": {
+        "text": "重置"
+      },
+      "123:413": {
+        "text": "🎉"
+      },
+      "123:415": {
+        "text": "完成！"
+      },
+      "123:418": {
+        "text": "难度：中级 / 用时：15:34 / 错误：0 / 提示：50"
+      },
+      "123:423": {
+        "text": "再玩一次"
+      },
+      "123:426": {
+        "text": "更换难度"
+      },
+      "123:429": {
+        "text": "关闭"
       }
     }
   },
-  "changedTexts": []
+  "changedTexts": [
+    {
+      "frameId": "0:1",
+      "textLayerId": "108:56",
+      "before": "難易度を選択",
+      "after": "難易度を選択1",
+      "action": "modified"
+    },
+    {
+      "frameId": "0:1",
+      "textLayerId": "110:60",
+      "before": "新しいゲーム v6",
+      "after": "新しいゲーム v78979",
+      "action": "modified"
+    },
+    {
+      "frameId": "0:1",
+      "textLayerId": "108:55",
+      "before": "難易度を選択",
+      "after": "難易度を選択2",
+      "action": "modified"
+    },
+    {
+      "frameId": "0:1",
+      "textLayerId": "6:11",
+      "before": "難易度を選択",
+      "after": "難易度を選択3",
+      "action": "modified"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:507",
+      "before": "难度",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:509",
+      "before": "中级",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:512",
+      "before": "已用时",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:514",
+      "before": "15:34",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:517",
+      "before": "错误",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:519",
+      "before": "0",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:522",
+      "before": "提示",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:524",
+      "before": "50",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:530",
+      "before": "7",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:534",
+      "before": "6",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:538",
+      "before": "4",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:542",
+      "before": "1",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:546",
+      "before": "3",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:550",
+      "before": "9",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:554",
+      "before": "2",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:558",
+      "before": "5",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:562",
+      "before": "8",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:567",
+      "before": "1",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:571",
+      "before": "5",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:575",
+      "before": "3",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:579",
+      "before": "2",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:583",
+      "before": "8",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:587",
+      "before": "6",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:591",
+      "before": "9",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:595",
+      "before": "4",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:599",
+      "before": "7",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:604",
+      "before": "8",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:608",
+      "before": "2",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:612",
+      "before": "9",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:616",
+      "before": "7",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:620",
+      "before": "5",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:624",
+      "before": "4",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:628",
+      "before": "6",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:632",
+      "before": "1",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:636",
+      "before": "3",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:641",
+      "before": "3",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:645",
+      "before": "1",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:649",
+      "before": "6",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:653",
+      "before": "4",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:657",
+      "before": "2",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:661",
+      "before": "5",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:665",
+      "before": "8",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:669",
+      "before": "7",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:673",
+      "before": "9",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:678",
+      "before": "5",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:682",
+      "before": "8",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:686",
+      "before": "7",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:690",
+      "before": "9",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:694",
+      "before": "1",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:698",
+      "before": "3",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:702",
+      "before": "4",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:706",
+      "before": "6",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:710",
+      "before": "2",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:715",
+      "before": "9",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:719",
+      "before": "4",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:723",
+      "before": "2",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:727",
+      "before": "8",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:731",
+      "before": "6",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:735",
+      "before": "7",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:739",
+      "before": "5",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:743",
+      "before": "3",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:747",
+      "before": "1",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:752",
+      "before": "2",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:756",
+      "before": "7",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:760",
+      "before": "1",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:764",
+      "before": "6",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:768",
+      "before": "4",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:772",
+      "before": "8",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:776",
+      "before": "3",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:780",
+      "before": "9",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:784",
+      "before": "5",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:789",
+      "before": "4",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:793",
+      "before": "9",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:797",
+      "before": "5",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:801",
+      "before": "3",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:805",
+      "before": "7",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:809",
+      "before": "2",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:813",
+      "before": "1",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:817",
+      "before": "8",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:821",
+      "before": "6",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:826",
+      "before": "6",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:830",
+      "before": "3",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:834",
+      "before": "8",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:838",
+      "before": "5",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:842",
+      "before": "9",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:846",
+      "before": "1",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:850",
+      "before": "7",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:854",
+      "before": "2",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:858",
+      "before": "4",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:863",
+      "before": "1",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:866",
+      "before": "2",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:869",
+      "before": "3",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:872",
+      "before": "4",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:875",
+      "before": "5",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:878",
+      "before": "6",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:881",
+      "before": "7",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:884",
+      "before": "8",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:887",
+      "before": "9",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:891",
+      "before": "删除",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:894",
+      "before": "备注",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:898",
+      "before": "撤销",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:901",
+      "before": "重做",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:904",
+      "before": "提示",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:907",
+      "before": "重置",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:912",
+      "before": "🎉",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:914",
+      "before": "完成！",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:917",
+      "before": "难度：中级 / 用时：15:34 / 错误：0 / 提示：50",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:922",
+      "before": "再玩一次",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:925",
+      "before": "更换难度",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "112:928",
+      "before": "关闭",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:8",
+      "before": null,
+      "after": "难度",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:10",
+      "before": null,
+      "after": "中级",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:13",
+      "before": null,
+      "after": "已用时",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:15",
+      "before": null,
+      "after": "15:34",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:18",
+      "before": null,
+      "after": "错误",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:20",
+      "before": null,
+      "after": "0",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:23",
+      "before": null,
+      "after": "提示",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:25",
+      "before": null,
+      "after": "50",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:31",
+      "before": null,
+      "after": "7",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:35",
+      "before": null,
+      "after": "6",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:39",
+      "before": null,
+      "after": "4",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:43",
+      "before": null,
+      "after": "1",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:47",
+      "before": null,
+      "after": "3",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:51",
+      "before": null,
+      "after": "9",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:55",
+      "before": null,
+      "after": "2",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:59",
+      "before": null,
+      "after": "5",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:63",
+      "before": null,
+      "after": "8",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:68",
+      "before": null,
+      "after": "1",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:72",
+      "before": null,
+      "after": "5",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:76",
+      "before": null,
+      "after": "3",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:80",
+      "before": null,
+      "after": "2",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:84",
+      "before": null,
+      "after": "8",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:88",
+      "before": null,
+      "after": "6",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:92",
+      "before": null,
+      "after": "9",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:96",
+      "before": null,
+      "after": "4",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:100",
+      "before": null,
+      "after": "7",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:105",
+      "before": null,
+      "after": "8",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:109",
+      "before": null,
+      "after": "2",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:113",
+      "before": null,
+      "after": "9",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:117",
+      "before": null,
+      "after": "7",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:121",
+      "before": null,
+      "after": "5",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:125",
+      "before": null,
+      "after": "4",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:129",
+      "before": null,
+      "after": "6",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:133",
+      "before": null,
+      "after": "1",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:137",
+      "before": null,
+      "after": "3",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:142",
+      "before": null,
+      "after": "3",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:146",
+      "before": null,
+      "after": "1",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:150",
+      "before": null,
+      "after": "6",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:154",
+      "before": null,
+      "after": "4",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:158",
+      "before": null,
+      "after": "2",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:162",
+      "before": null,
+      "after": "5",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:166",
+      "before": null,
+      "after": "8",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:170",
+      "before": null,
+      "after": "7",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:174",
+      "before": null,
+      "after": "9",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:179",
+      "before": null,
+      "after": "5",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:183",
+      "before": null,
+      "after": "8",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:187",
+      "before": null,
+      "after": "7",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:191",
+      "before": null,
+      "after": "9",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:195",
+      "before": null,
+      "after": "1",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:199",
+      "before": null,
+      "after": "3",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:203",
+      "before": null,
+      "after": "4",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:207",
+      "before": null,
+      "after": "6",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:211",
+      "before": null,
+      "after": "2",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:216",
+      "before": null,
+      "after": "9",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:220",
+      "before": null,
+      "after": "4",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:224",
+      "before": null,
+      "after": "2",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:228",
+      "before": null,
+      "after": "8",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:232",
+      "before": null,
+      "after": "6",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:236",
+      "before": null,
+      "after": "7",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:240",
+      "before": null,
+      "after": "5",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:244",
+      "before": null,
+      "after": "3",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:248",
+      "before": null,
+      "after": "1",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:253",
+      "before": null,
+      "after": "2",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:257",
+      "before": null,
+      "after": "7",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:261",
+      "before": null,
+      "after": "1",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:265",
+      "before": null,
+      "after": "6",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:269",
+      "before": null,
+      "after": "4",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:273",
+      "before": null,
+      "after": "8",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:277",
+      "before": null,
+      "after": "3",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:281",
+      "before": null,
+      "after": "9",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:285",
+      "before": null,
+      "after": "5",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:290",
+      "before": null,
+      "after": "4",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:294",
+      "before": null,
+      "after": "9",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:298",
+      "before": null,
+      "after": "5",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:302",
+      "before": null,
+      "after": "3",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:306",
+      "before": null,
+      "after": "7",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:310",
+      "before": null,
+      "after": "2",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:314",
+      "before": null,
+      "after": "1",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:318",
+      "before": null,
+      "after": "8",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:322",
+      "before": null,
+      "after": "6",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:327",
+      "before": null,
+      "after": "6",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:331",
+      "before": null,
+      "after": "3",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:335",
+      "before": null,
+      "after": "8",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:339",
+      "before": null,
+      "after": "5",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:343",
+      "before": null,
+      "after": "9",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:347",
+      "before": null,
+      "after": "1",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:351",
+      "before": null,
+      "after": "7",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:355",
+      "before": null,
+      "after": "2",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:359",
+      "before": null,
+      "after": "4",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:364",
+      "before": null,
+      "after": "1",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:367",
+      "before": null,
+      "after": "2",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:370",
+      "before": null,
+      "after": "3",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:373",
+      "before": null,
+      "after": "4",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:376",
+      "before": null,
+      "after": "5",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:379",
+      "before": null,
+      "after": "6",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:382",
+      "before": null,
+      "after": "7",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:385",
+      "before": null,
+      "after": "8",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:388",
+      "before": null,
+      "after": "9",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:392",
+      "before": null,
+      "after": "删除",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:395",
+      "before": null,
+      "after": "备注",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:399",
+      "before": null,
+      "after": "撤销",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:402",
+      "before": null,
+      "after": "重做",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:405",
+      "before": null,
+      "after": "提示",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:408",
+      "before": null,
+      "after": "重置",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:413",
+      "before": null,
+      "after": "🎉",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:415",
+      "before": null,
+      "after": "完成！",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:418",
+      "before": null,
+      "after": "难度：中级 / 用时：15:34 / 错误：0 / 提示：50",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:423",
+      "before": null,
+      "after": "再玩一次",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:426",
+      "before": null,
+      "after": "更换难度",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "123:429",
+      "before": null,
+      "after": "关闭",
+      "action": "added"
+    }
+  ]
 }
