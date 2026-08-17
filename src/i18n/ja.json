@@ -1,5 +1,5 @@
 {
-  "home": { "title": "あ新しゲーム" },
+  "home": { "title": "新しいゲーム！中" },
   "difficulty": { "title": "難易度を選択", "label": "難易度", "easy": "初級", "medium": "中級", "hard": "上級" },
   "game": {
     "timer": "経過時間",
