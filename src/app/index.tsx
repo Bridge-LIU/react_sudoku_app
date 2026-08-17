@@ -9,15 +9,23 @@ import { DifficultyPicker } from '@/ui/DifficultyPicker';
 import { LanguageSwitch } from '@/ui/LanguageSwitch';
 import { colors, spacing, typography } from '@/ui/theme';
 
-// Figma strict SoT (sync4): 各言語 page で難度タイトルの表示個数が異なる
-//   JP: 3 個（Figma で「難易度を選択」を 3 stack）
-//   ZH: 2 個（Figma で「選択難度」相当を 2 stack）
-//   EN: 1 個（Figma 変化なし）
-// DifficultyPicker 内で 1 個 render するため、ここで extras を追加する。
-function extraTitleCount(lang: string): number {
-  if (lang === 'ja') return 2;  // + DifficultyPicker 内の 1 = 合計 3
-  if (lang === 'zh') return 1;  // + 1 = 合計 2
-  return 0;                     // EN は 1 のまま
+// Figma strict SoT (sync5): 各言語 page で難度タイトルの表示個数と位置が異なる
+//   JP: 3 個 distinct（「難易度を選択1/2/3」）— 選択1 は home.title の上、
+//       選択2 は home.title の下、選択3 は DifficultyPicker 内
+//   ZH: 2 個（「选择难度」を 2 stack）— 1 個 extra + DifficultyPicker 内
+//   EN: 1 個（DifficultyPicker 内のみ）
+// DifficultyPicker 内で言語別に 1 個 render するため、ここで page 上の extras を追加する。
+type ExtraLayout = { before: string[]; after: string[] };
+function extraTitleLayout(lang: string): ExtraLayout {
+  if (lang === 'ja') {
+    // Figma 位置: 選択1 (y=169.5) → home.title (y=228.5) → 選択2 (y=287.5)
+    return { before: ['difficulty.titleJp1'], after: ['difficulty.titleJp2'] };
+  }
+  if (lang === 'zh') {
+    // ZH は home.title の下に 1 個 追加
+    return { before: [], after: ['difficulty.title'] };
+  }
+  return { before: [], after: [] };
 }
 
 export default function HomeScreen() {
@@ -25,7 +33,7 @@ export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   // ZH page Figma のみ LanguageSwitch を duplicate（Figma strict SoT 準拠、sync4）
   const showDuplicateLangSwitch = i18n.language === 'zh';
-  const extras = extraTitleCount(i18n.language);
+  const layout = extraTitleLayout(i18n.language);
   return (
     <View style={styles.container}>
       {/* 右上角の言語切替。position absolute で他レイアウトに影響させない。 */}
@@ -38,10 +46,15 @@ export default function HomeScreen() {
         )}
       </View>
       <View style={styles.titleWrap}>
+        {layout.before.map((key, i) => (
+          <Text key={`before-difftitle-${i}`} style={typography.h1}>
+            {t(key)}
+          </Text>
+        ))}
         <Text style={typography.h2}>{t('home.title')}</Text>
-        {Array.from({ length: extras }).map((_, i) => (
-          <Text key={`dup-difftitle-${i}`} style={typography.h1}>
-            {t('difficulty.title')}
+        {layout.after.map((key, i) => (
+          <Text key={`after-difftitle-${i}`} style={typography.h1}>
+            {t(key)}
           </Text>
         ))}
       </View>

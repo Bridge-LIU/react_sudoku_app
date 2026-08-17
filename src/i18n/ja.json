@@ -1,9 +1,12 @@
 {
   "home": {
-    "title": "新しいゲーム v6"
+    "title": "新しいゲーム v78979"
   },
   "difficulty": {
     "title": "難易度を選択",
+    "titleJp1": "難易度を選択1",
+    "titleJp2": "難易度を選択2",
+    "titleJp3": "難易度を選択3",
     "label": "難易度",
     "easy": "初級",
     "medium": "中級",
@@ -33,12 +36,6 @@
     "network": "ネットワークエラー",
     "retryHint": "盤面が変わりました。もう一度ヒントを押してください。",
     "unknownError": "ヒントの取得に失敗しました"
-  },
-  "settings": {
-    "title": "設定",
-    "showMistakes": "ミスを即時表示",
-    "autoRemoveNotes": "確定時に候補を自動削除",
-    "language": "言語"
   },
   "common": {
     "ok": "OK",
