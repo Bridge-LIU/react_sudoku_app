@@ -22,15 +22,16 @@ test.describe('Sudoku production smoke E2E', () => {
     await page.goto('/');
     await expect(page).toHaveTitle('Sudoku');
     // 難易度セレクターの日本語ラベルが見える（現状デフォルト日本語）
-    await expect(page.getByText('難易度を選択')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('初級')).toBeVisible();
-    await expect(page.getByText('中級')).toBeVisible();
-    await expect(page.getByText('上級')).toBeVisible();
+    // Figma strict SoT (sync4): JP page では「難易度を選択」を 3 個 stack render するため .first() で強制解決
+    await expect(page.getByText('難易度を選択').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('初級').first()).toBeVisible();
+    await expect(page.getByText('中級').first()).toBeVisible();
+    await expect(page.getByText('上級').first()).toBeVisible();
   });
 
   test('difficulty selection navigates to /play/easy', async ({ page }) => {
     await page.goto('/');
-    await page.getByText('初級').click();
+    await page.getByText('初級').first().click();
     // Expo Router 遷移待ち
     await page.waitForURL('**/play/easy', { timeout: 10_000 });
     // Play 画面のマーカー要素

@@ -1,129 +1,7 @@
-import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
-import stringify from 'fast-json-stable-stringify';
 import { z } from 'zod';
-
-export function canonicalize(obj) {
-  return stringify(obj);
-}
-
-export function sha256(str) {
-  return 'sha256:' + createHash('sha256').update(str).digest('hex');
-}
-
-export function findNode(tree, nodeId) {
-  if (!tree || typeof tree !== 'object') return null;
-  if (tree.id === nodeId) return tree;
-  for (const child of tree.children || []) {
-    const found = findNode(child, nodeId);
-    if (found) return found;
-  }
-  return null;
-}
-
-export function extractTextNodes(node) {
-  const result = {};
-  function walk(n) {
-    if (!n || typeof n !== 'object') return;
-    if (n.type === 'TEXT' && n.id) {
-      result[n.id] = { text: n.characters || '' };
-    }
-    for (const child of n.children || []) {
-      walk(child);
-    }
-  }
-  walk(node);
-  return result;
-}
-
-export function extractTextSnapshot(tree, registeredIds) {
-  const result = {};
-  for (const id of registeredIds) {
-    const node = findNode(tree, id);
-    if (node) {
-      result[id] = extractTextNodes(node);
-    }
-  }
-  return result;
-}
-
-export function diffTextSnapshots(prev, curr) {
-  const changes = [];
-  const prevSnap = prev || {};
-  const allFrameIds = new Set([...Object.keys(prevSnap), ...Object.keys(curr)]);
-
-  for (const frameId of allFrameIds) {
-    const prevTexts = prevSnap[frameId] || {};
-    const currTexts = curr[frameId] || {};
-    const allTextIds = new Set([...Object.keys(prevTexts), ...Object.keys(currTexts)]);
-
-    for (const textId of allTextIds) {
-      const before = prevTexts[textId]?.text ?? null;
-      const after = currTexts[textId]?.text ?? null;
-
-      if (before === null && after !== null) {
-        changes.push({ frameId, textLayerId: textId, before: null, after, action: 'added' });
-      } else if (before !== null && after === null) {
-        changes.push({ frameId, textLayerId: textId, before, after: null, action: 'removed' });
-      } else if (before !== after) {
-        changes.push({ frameId, textLayerId: textId, before, after, action: 'modified' });
-      }
-    }
-  }
-  return changes;
-}
-
-export function computePerFrameHash(tree, registeredIds) {
-  const result = {};
-  for (const id of registeredIds) {
-    const node = findNode(tree, id);
-    if (node) {
-      result[id] = sha256(canonicalize(node));
-    }
-  }
-  return result;
-}
-
-// 漏検リスク #1・#2 対応：frame 子樹外の共有 style / component 定義を捕捉
-export function computeMetaHash(fileResponse) {
-  const meta = {
-    styles: fileResponse.styles || {},
-    components: fileResponse.components || {},
-    componentSets: fileResponse.componentSets || {},
-  };
-  return sha256(canonicalize(meta));
-}
-
-export function diffHashes(prev, curr) {
-  const prevMap = prev || {};
-  const prevKeys = new Set(Object.keys(prevMap));
-  const currKeys = new Set(Object.keys(curr));
-
-  const changed = [];
-  const added = [];
-  const removed = [];
-
-  for (const id of currKeys) {
-    if (!prevKeys.has(id)) {
-      added.push(id);
-    } else if (prevMap[id] !== curr[id]) {
-      changed.push(id);
-    }
-  }
-  for (const id of prevKeys) {
-    if (!currKeys.has(id)) {
-      removed.push(id);
-    }
-  }
-
-  return {
-    changed: changed.sort(),
-    added: added.sort(),
-    removed: removed.sort(),
-  };
-}
 
 export function assertFigmaResponse(response) {
   if (!response || typeof response !== 'object') {
@@ -137,29 +15,6 @@ export function assertFigmaResponse(response) {
   }
 }
 
-export function assertHashStability(tree, registeredIds) {
-  const first = computePerFrameHash(tree, registeredIds);
-  const second = computePerFrameHash(tree, registeredIds);
-  for (const id of registeredIds) {
-    if (first[id] !== second[id]) {
-      throw new Error(`Hash non-deterministic for ${id} (canonical serializer bug)`);
-    }
-  }
-}
-
-export function assertDiffDisjoint({ changed, added, removed }) {
-  const c = new Set(changed);
-  const a = new Set(added);
-  const r = new Set(removed);
-  for (const id of c) {
-    if (a.has(id)) throw new Error(`Diff set overlap: ${id} in changed and added`);
-    if (r.has(id)) throw new Error(`Diff set overlap: ${id} in changed and removed`);
-  }
-  for (const id of a) {
-    if (r.has(id)) throw new Error(`Diff set overlap: ${id} in added and removed`);
-  }
-}
-
 // Rate limit / transient error retry (I3 fix + 2026-08-10 night 実測):
 // Figma REST は非公開 rate limit あり、短時間連打で 429。5xx は upstream 一時障害。
 // 両方共 exponential backoff で 3 回まで retry する。Retry-After header あれば優先、
@@ -167,7 +22,7 @@ export function assertDiffDisjoint({ changed, added, removed }) {
 // 実測で Figma が Retry-After: 374210s（4.3 日）を返した事例あり、cap 必須。
 const MAX_RETRY_WAIT_MS = 60000;
 
-async function fetchWithRetry(url, options, retries = 3) {
+export async function fetchWithRetry(url, options, retries = 3) {
   for (let attempt = 0; attempt < retries; attempt++) {
     const res = await fetch(url, options);
     if (res.ok) return res;
@@ -199,47 +54,17 @@ export async function fetchFigmaDepth1(fileKey, token) {
   return res.json();
 }
 
-export async function fetchFigmaFull(fileKey, token) {
-  const url = `https://api.figma.com/v1/files/${fileKey}`;
-  const res = await fetchWithRetry(url, { headers: { 'X-Figma-Token': token } });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Figma REST ${res.status}: ${body.slice(0, 200)}`);
-  }
-  return res.json();
-}
-
-export const TextSnapshotSchema = z.record(
-  z.string(),
-  z.record(z.string(), z.object({ text: z.string(), style: z.string().optional() }))
-);
-
-export const ChangedTextSchema = z.object({
-  frameId: z.string(),
-  textLayerId: z.string(),
-  before: z.string().nullable(),
-  after: z.string().nullable(),
-  action: z.enum(['added', 'modified', 'removed']),
-});
-
+// v3 state schema — 大幅簡素化。
+// v2 の textSnapshot / changedTexts / perFrameHash / metaHash / diff array を全削除。
+// skill 側は MCP で毎回 fresh に取るので、workflow は「変化 yes/no」の signal だけに徹する。
 export const StateSchema = z.object({
-  checkedAt: z.string(),
-  workflowRunId: z.number().nullable(),
-  fileKey: z.string(),
+  schemaVersion: z.literal(3),
   figmaVersion: z.string(),
   figmaLastModified: z.string(),
-  treeHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
-  metaHash: z.string().regex(/^sha256:[a-f0-9]{64}$/),
-  perFrameHash: z.record(z.string(), z.string().regex(/^sha256:[a-f0-9]{64}$/)),
-  changedSinceLastRun: z.array(z.string()),
-  added: z.array(z.string()),
-  removed: z.array(z.string()),
-  metaChanged: z.boolean(),
-
-  // v2 optional (backward compat with v1 state)
-  schemaVersion: z.literal(2).optional(),
-  textSnapshot: TextSnapshotSchema.optional(),
-  changedTexts: z.array(ChangedTextSchema).optional(),
+  checkedAt: z.string(),
+  workflowRunId: z.number().nullable(),
+  hasChanges: z.boolean(),
+  fileKey: z.string(),
 });
 
 export const ConfigSchema = z.object({
@@ -251,8 +76,8 @@ export const ConfigSchema = z.object({
   assetsRoot: z.string().optional(),
   lastSyncedVersion: z.string().nullable(),
 
-  // v2 optional: frame nodeId → lang code map (e.g. "0:1" → "ja")
-  // 未定義なら v1 の暗黙順序フォールバック（frames[0]=ja, frames[1]=zh, ...）
+  // frame nodeId → lang code map (e.g. "0:1" → "ja")
+  // skill L7 で subagent dispatch 時に使う。
   langMap: z.record(z.string(), z.string()).optional(),
 });
 
@@ -260,12 +85,9 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
   const token = process.env.FIGMA_TOKEN;
   if (!token) throw new Error('FIGMA_TOKEN env var not set');
 
-  // Load and validate config
   const rawConfig = JSON.parse(await readFile(configPath, 'utf8'));
   const config = ConfigSchema.parse(rawConfig);
-  const registeredIds = config.frames;
 
-  // Load previous state if provided (may not exist on first run)
   let prevState = null;
   if (prevStatePath) {
     try {
@@ -278,112 +100,47 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
     }
   }
 
-  // Fetch depth=1 to get version
+  // Only fetch depth=1 (lightweight, ~1.6 KB)
   const depth1 = await fetchFigmaDepth1(config.fileKey, token);
   assertFigmaResponse(depth1);
 
-  // Early exit if version unchanged AND textSnapshot already populated
-  // (v1→v2 transition: prevState is v1 (no textSnapshot) → skip early exit, force full fetch
-  //  to build textSnapshot baseline; next sync's diff will then be accurate)
-  const prevHasTextSnapshot = prevState?.textSnapshot && Object.keys(prevState.textSnapshot).length > 0;
+  // Determine hasChanges: version differs from prev OR from lastSyncedVersion
+  const versionChanged = !prevState || prevState.figmaVersion !== depth1.version;
+  const notYetSynced = config.lastSyncedVersion !== depth1.version;
+  const hasChanges = versionChanged || notYetSynced;
 
-  // v2.2 race condition fix: skill が unconsumed changedTexts を持つ状態で cron が連続稼働すると、
-  // 早期 exit path が changedTexts を [] で上書きし、diff が silent に消失する bug があった。
-  // 修正: config.lastSyncedVersion === curr figmaVersion なら skill 側が反映済みと判断して clear、
-  // そうでなければ prev.changedTexts を保持して skill が消費できるようにする。
-  const skillHasAcknowledgedThisVersion = config.lastSyncedVersion === depth1.version;
-
-  if (prevState && prevState.figmaVersion === depth1.version && prevHasTextSnapshot) {
-    const state = {
-      ...prevState,
-      checkedAt: new Date().toISOString(),
-      workflowRunId: process.env.GITHUB_RUN_ID ? Number(process.env.GITHUB_RUN_ID) : null,
-      // reset diff arrays since we're up-to-date
-      changedSinceLastRun: [],
-      added: [],
-      removed: [],
-      metaChanged: false,
-      // v2: preserve textSnapshot, empty changedTexts (no change)
-      schemaVersion: 2,
-      textSnapshot: prevState.textSnapshot,
-      // skill が本 version を acknowledge 済みなら clear、未 ack なら preserve
-      // （skill 未消費の diff を勝手に消さない）
-      changedTexts: skillHasAcknowledgedThisVersion ? [] : (prevState.changedTexts || []),
-    };
-    StateSchema.parse(state);
-    await writeFile(outPath, JSON.stringify(state, null, 2));
-    console.log(`no change (figma version ${depth1.version} matches prev state, changedTexts ${state.changedTexts.length} preserved=${!skillHasAcknowledgedThisVersion})`);
-    return { changed: [], added: [], removed: [], metaChanged: false };
-  }
-
-  // Fetch full tree
-  const full = await fetchFigmaFull(config.fileKey, token);
-  assertFigmaResponse(full);
-
-  // Compute per-frame hashes (with stability check)
-  assertHashStability(full.document, registeredIds);
-  const currHashes = computePerFrameHash(full.document, registeredIds);
-  const currMetaHash = computeMetaHash(full);
-
-  // Diff
-  const prevHashes = prevState?.perFrameHash || null;
-  const diff = diffHashes(prevHashes, currHashes);
-  assertDiffDisjoint(diff);
-
-  // 漏検リスク #1・#2 対応: metaHash 変化検出
-  const metaChanged = prevState ? (prevState.metaHash !== currMetaHash) : true;
-
-  // v2: text snapshot + diff
-  // baseline とみなす条件：
-  //  - prev state なし（first run）
-  //  - prev.textSnapshot が空 or 未定義（v1→v2 transition の初回 full fetch）
-  // baseline 時は changedTexts=[] とし、skill が「全 text を added として apply」する事故を防ぐ
-  const currTextSnapshot = extractTextSnapshot(full.document, registeredIds);
-  const prevHasUsableSnapshot = prevState?.textSnapshot && Object.keys(prevState.textSnapshot).length > 0;
-  const changedTexts = prevHasUsableSnapshot
-    ? diffTextSnapshots(prevState.textSnapshot, currTextSnapshot)
-    : [];
-
-  // Build state
   const state = {
+    schemaVersion: 3,
+    figmaVersion: depth1.version,
+    figmaLastModified: depth1.lastModified,
     checkedAt: new Date().toISOString(),
     workflowRunId: process.env.GITHUB_RUN_ID ? Number(process.env.GITHUB_RUN_ID) : null,
+    hasChanges,
     fileKey: config.fileKey,
-    figmaVersion: full.version,
-    figmaLastModified: full.lastModified,
-    treeHash: sha256(canonicalize(full.document)),
-    metaHash: currMetaHash,
-    perFrameHash: currHashes,
-    changedSinceLastRun: diff.changed,
-    added: diff.added,
-    removed: diff.removed,
-    metaChanged,
-    // v2
-    schemaVersion: 2,
-    textSnapshot: currTextSnapshot,
-    changedTexts,
   };
 
-  StateSchema.parse(state); // 自検 ②
-
+  StateSchema.parse(state);
   await writeFile(outPath, JSON.stringify(state, null, 2));
-  console.log(`state written: ${diff.changed.length} changed, ${diff.added.length} added, ${diff.removed.length} removed, metaChanged=${metaChanged}`);
-  return { ...diff, metaChanged };
+  console.log(`v3 state written: figmaVersion=${depth1.version} hasChanges=${hasChanges}`);
+  return { hasChanges, figmaVersion: depth1.version };
 }
 
 async function main() {
   const { values } = parseArgs({
     options: {
+      // v3: diff logic 廃止、内部は version compare のみ。
+      // backward compat のため --pull-and-diff / --pull-only flag を受け付けるが、意味は同じ。
       'pull-and-diff': { type: 'boolean' },
       'pull-only': { type: 'boolean' },
+      check: { type: 'boolean' },
       config: { type: 'string', default: '.figma-sync.json' },
       out: { type: 'string', default: '/tmp/state.json' },
       'prev-state': { type: 'string' },
     },
   });
 
-  if (!values['pull-and-diff'] && !values['pull-only']) {
-    console.error('Usage: figma-check.js --pull-and-diff [--prev-state <path>] [--config <path>] [--out <path>]');
+  if (!values['pull-and-diff'] && !values['pull-only'] && !values.check) {
+    console.error('Usage: figma-check.js --check [--prev-state <path>] [--config <path>] [--out <path>]');
     process.exit(2);
   }
 

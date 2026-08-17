@@ -1,329 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { canonicalize, sha256, findNode, extractTextNodes, extractTextSnapshot, diffTextSnapshots, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema, runCheck } from './figma-check.js';
-import { readFileSync } from 'node:fs';
+import { assertFigmaResponse, fetchWithRetry, StateSchema, ConfigSchema, runCheck } from './figma-check.js';
 import { writeFile, readFile, mkdir, rm } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const loadFixture = (name) =>
-  JSON.parse(readFileSync(join(__dirname, '__fixtures__', name), 'utf8'));
-
-const v1 = loadFixture('figma-response-v1.json');
-const v2 = loadFixture('figma-response-v2-modified.json');
-const v3 = loadFixture('figma-response-v3-added.json');
-const v4 = loadFixture('figma-response-v4-removed.json');
-
-describe('canonicalize', () => {
-  it('sorts object keys deterministically', () => {
-    const a = { b: 1, a: 2, c: 3 };
-    const b = { c: 3, a: 2, b: 1 };
-    expect(canonicalize(a)).toBe(canonicalize(b));
-  });
-
-  it('handles nested objects', () => {
-    const a = { x: { z: 1, y: 2 } };
-    const b = { x: { y: 2, z: 1 } };
-    expect(canonicalize(a)).toBe(canonicalize(b));
-  });
-
-  it('preserves array order', () => {
-    expect(canonicalize([3, 1, 2])).toBe('[3,1,2]');
-  });
-});
-
-describe('sha256', () => {
-  it('hashes empty string to known value', () => {
-    expect(sha256('')).toBe('sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
-  });
-
-  it('hashes "hello" to known value', () => {
-    expect(sha256('hello')).toBe('sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
-  });
-
-  it('same input produces same hash', () => {
-    expect(sha256('abc')).toBe(sha256('abc'));
-  });
-});
-
-describe('findNode', () => {
-  it('finds top-level page by id', () => {
-    const node = findNode(v1.document, '0:1');
-    expect(node).toBeTruthy();
-    expect(node.name).toBe('JP');
-  });
-
-  it('finds nested frame by id', () => {
-    const node = findNode(v1.document, '0:2');
-    expect(node).toBeTruthy();
-    expect(node.name).toBe('Board');
-  });
-
-  it('returns null for missing id', () => {
-    expect(findNode(v1.document, '999:999')).toBeNull();
-  });
-});
-
-describe('extractTextNodes', () => {
-  it('returns empty object for node with no TEXT children', () => {
-    const node = { id: '0:1', type: 'CANVAS', children: [{ id: '0:2', type: 'FRAME' }] };
-    expect(extractTextNodes(node)).toEqual({});
-  });
-
-  it('extracts TEXT node with characters field', () => {
-    const node = {
-      id: '0:1', type: 'CANVAS',
-      children: [{ id: '0:2', type: 'TEXT', characters: 'Hello' }],
-    };
-    expect(extractTextNodes(node)).toEqual({
-      '0:2': { text: 'Hello' },
-    });
-  });
-
-  it('extracts TEXT nodes at deeper nesting', () => {
-    const node = {
-      id: '0:1', type: 'CANVAS',
-      children: [
-        {
-          id: '0:2', type: 'FRAME',
-          children: [
-            { id: '0:3', type: 'TEXT', characters: 'A' },
-            { id: '0:4', type: 'FRAME', children: [{ id: '0:5', type: 'TEXT', characters: 'B' }] },
-          ],
-        },
-      ],
-    };
-    expect(extractTextNodes(node)).toEqual({
-      '0:3': { text: 'A' },
-      '0:5': { text: 'B' },
-    });
-  });
-
-  it('handles missing characters field as empty string', () => {
-    const node = { id: '0:1', type: 'TEXT' };
-    expect(extractTextNodes(node)).toEqual({ '0:1': { text: '' } });
-  });
-
-  it('handles null / undefined gracefully', () => {
-    expect(extractTextNodes(null)).toEqual({});
-    expect(extractTextNodes(undefined)).toEqual({});
-  });
-});
-
-describe('extractTextSnapshot', () => {
-  const tree = {
-    id: '0:0', type: 'DOCUMENT',
-    children: [
-      {
-        id: '0:1', type: 'CANVAS',
-        children: [{ id: '0:2', type: 'TEXT', characters: 'JP' }],
-      },
-      {
-        id: '6:6', type: 'CANVAS',
-        children: [{ id: '6:7', type: 'TEXT', characters: 'ZH' }],
-      },
-      {
-        id: '6:410', type: 'CANVAS',
-        children: [], // 空
-      },
-    ],
-  };
-
-  it('produces snapshot keyed by registered frame id', () => {
-    const snap = extractTextSnapshot(tree, ['0:1', '6:6', '6:410']);
-    expect(snap).toEqual({
-      '0:1': { '0:2': { text: 'JP' } },
-      '6:6': { '6:7': { text: 'ZH' } },
-      '6:410': {},
-    });
-  });
-
-  it('omits ids not found in tree', () => {
-    const snap = extractTextSnapshot(tree, ['0:1', 'nonexistent:999']);
-    expect(Object.keys(snap)).toEqual(['0:1']);
-  });
-
-  it('returns empty object for empty registered ids', () => {
-    expect(extractTextSnapshot(tree, [])).toEqual({});
-  });
-});
-
-describe('diffTextSnapshots', () => {
-  it('detects added text node', () => {
-    const prev = { '0:1': {} };
-    const curr = { '0:1': { '0:2': { text: 'Hello' } } };
-    expect(diffTextSnapshots(prev, curr)).toEqual([
-      { frameId: '0:1', textLayerId: '0:2', before: null, after: 'Hello', action: 'added' },
-    ]);
-  });
-
-  it('detects modified text node', () => {
-    const prev = { '0:1': { '0:2': { text: 'Old' } } };
-    const curr = { '0:1': { '0:2': { text: 'New' } } };
-    expect(diffTextSnapshots(prev, curr)).toEqual([
-      { frameId: '0:1', textLayerId: '0:2', before: 'Old', after: 'New', action: 'modified' },
-    ]);
-  });
-
-  it('detects removed text node', () => {
-    const prev = { '0:1': { '0:2': { text: 'Bye' } } };
-    const curr = { '0:1': {} };
-    expect(diffTextSnapshots(prev, curr)).toEqual([
-      { frameId: '0:1', textLayerId: '0:2', before: 'Bye', after: null, action: 'removed' },
-    ]);
-  });
-
-  it('handles null prev as all added', () => {
-    const curr = { '0:1': { '0:2': { text: 'X' } } };
-    expect(diffTextSnapshots(null, curr)).toEqual([
-      { frameId: '0:1', textLayerId: '0:2', before: null, after: 'X', action: 'added' },
-    ]);
-  });
-
-  it('returns empty array when no changes', () => {
-    const snap = { '0:1': { '0:2': { text: 'Same' } } };
-    expect(diffTextSnapshots(snap, snap)).toEqual([]);
-  });
-
-  it('handles multiple frames + multiple changes', () => {
-    const prev = { '0:1': { '0:2': { text: 'A' } }, '6:6': {} };
-    const curr = { '0:1': { '0:2': { text: 'B' } }, '6:6': { '6:7': { text: 'C' } } };
-    const result = diffTextSnapshots(prev, curr);
-    expect(result).toHaveLength(2);
-    expect(result).toContainEqual({ frameId: '0:1', textLayerId: '0:2', before: 'A', after: 'B', action: 'modified' });
-    expect(result).toContainEqual({ frameId: '6:6', textLayerId: '6:7', before: null, after: 'C', action: 'added' });
-  });
-});
-
-describe('StateSchema v2', () => {
-  const baseState = {
-    checkedAt: '2026-08-17T00:00:00Z',
-    workflowRunId: null,
-    fileKey: 'x',
-    figmaVersion: 'v1',
-    figmaLastModified: '2026-08-17T00:00:00Z',
-    treeHash: 'sha256:' + 'a'.repeat(64),
-    metaHash: 'sha256:' + 'b'.repeat(64),
-    perFrameHash: {},
-    changedSinceLastRun: [],
-    added: [],
-    removed: [],
-    metaChanged: false,
-  };
-
-  it('accepts v1 state without textSnapshot/changedTexts (backward compat)', () => {
-    expect(() => StateSchema.parse(baseState)).not.toThrow();
-  });
-
-  it('accepts v2 state with textSnapshot + changedTexts', () => {
-    const v2 = {
-      ...baseState,
-      schemaVersion: 2,
-      textSnapshot: { '0:1': { '0:2': { text: 'Hi' } } },
-      changedTexts: [{ frameId: '0:1', textLayerId: '0:2', before: null, after: 'Hi', action: 'added' }],
-    };
-    expect(() => StateSchema.parse(v2)).not.toThrow();
-  });
-
-  it('rejects invalid changedTexts action value', () => {
-    const invalid = {
-      ...baseState,
-      changedTexts: [{ frameId: '0:1', textLayerId: '0:2', before: null, after: 'X', action: 'weird' }],
-    };
-    expect(() => StateSchema.parse(invalid)).toThrow();
-  });
-});
-
-describe('computePerFrameHash', () => {
-  it('produces one entry per registered id that exists', () => {
-    const hash = computePerFrameHash(v1.document, ['0:1', '6:6', '6:410']);
-    expect(Object.keys(hash).sort()).toEqual(['0:1', '6:410', '6:6']);
-    expect(hash['0:1']).toMatch(/^sha256:[a-f0-9]{64}$/);
-  });
-
-  it('omits ids that do not exist in tree', () => {
-    const hash = computePerFrameHash(v1.document, ['0:1', 'nonexistent:999']);
-    expect(Object.keys(hash)).toEqual(['0:1']);
-  });
-
-  it('is deterministic (same tree, same hashes)', () => {
-    const a = computePerFrameHash(v1.document, ['0:1', '6:6']);
-    const b = computePerFrameHash(v1.document, ['0:1', '6:6']);
-    expect(a).toEqual(b);
-  });
-
-  it('v1 and v2 differ on 6:6 hash only', () => {
-    const a = computePerFrameHash(v1.document, ['0:1', '6:6', '6:410']);
-    const b = computePerFrameHash(v2.document, ['0:1', '6:6', '6:410']);
-    expect(a['0:1']).toBe(b['0:1']);
-    expect(a['6:6']).not.toBe(b['6:6']);
-    expect(a['6:410']).toBe(b['6:410']);
-  });
-});
-
-describe('computeMetaHash', () => {
-  it('produces same hash for same meta', () => {
-    expect(computeMetaHash(v1)).toBe(computeMetaHash(v1));
-  });
-
-  it('handles missing meta fields (all empty)', () => {
-    const empty = { document: {} };
-    const withEmptyMeta = { document: {}, styles: {}, components: {}, componentSets: {} };
-    expect(computeMetaHash(empty)).toBe(computeMetaHash(withEmptyMeta));
-  });
-
-  it('detects style change', () => {
-    const a = { styles: { 'S:1': { name: 'primary', color: 'red' } }, components: {}, componentSets: {} };
-    const b = { styles: { 'S:1': { name: 'primary', color: 'blue' } }, components: {}, componentSets: {} };
-    expect(computeMetaHash(a)).not.toBe(computeMetaHash(b));
-  });
-
-  it('v1 fixtures have empty meta, hash is stable', () => {
-    const h = computeMetaHash(v1);
-    expect(h).toMatch(/^sha256:[a-f0-9]{64}$/);
-  });
-});
-
-describe('diffHashes', () => {
-  it('test_no_change: identical hashes → all empty', () => {
-    const prev = { '0:1': 'a', '6:6': 'b' };
-    const curr = { '0:1': 'a', '6:6': 'b' };
-    expect(diffHashes(prev, curr)).toEqual({ changed: [], added: [], removed: [] });
-  });
-
-  it('test_frame_modified: one hash differs → changed', () => {
-    const prev = { '0:1': 'a', '6:6': 'b' };
-    const curr = { '0:1': 'a', '6:6': 'B_MODIFIED' };
-    expect(diffHashes(prev, curr)).toEqual({ changed: ['6:6'], added: [], removed: [] });
-  });
-
-  it('test_frame_added: new key → added', () => {
-    const prev = { '0:1': 'a' };
-    const curr = { '0:1': 'a', '9:999': 'new' };
-    expect(diffHashes(prev, curr)).toEqual({ changed: [], added: ['9:999'], removed: [] });
-  });
-
-  it('test_frame_removed: missing key → removed', () => {
-    const prev = { '0:1': 'a', '6:6': 'b' };
-    const curr = { '0:1': 'a' };
-    expect(diffHashes(prev, curr)).toEqual({ changed: [], added: [], removed: ['6:6'] });
-  });
-
-  it('handles null prev (first run, treat all as added)', () => {
-    const curr = { '0:1': 'a', '6:6': 'b' };
-    expect(diffHashes(null, curr)).toEqual({ changed: [], added: ['0:1', '6:6'], removed: [] });
-  });
-
-  it('handles all three simultaneously', () => {
-    const prev = { '0:1': 'a', '6:6': 'b', '6:410': 'c' };
-    const curr = { '0:1': 'a', '6:6': 'B_MOD', '9:999': 'd' };
-    const result = diffHashes(prev, curr);
-    expect(result.changed).toEqual(['6:6']);
-    expect(result.added).toEqual(['9:999']);
-    expect(result.removed).toEqual(['6:410']);
-  });
-});
 
 describe('assertFigmaResponse', () => {
   it('passes on valid response', () => {
@@ -347,69 +26,79 @@ describe('assertFigmaResponse', () => {
     expect(() => assertFigmaResponse({ version: '123' }))
       .toThrow(/lastModified/);
   });
-});
 
-describe('assertHashStability', () => {
-  it('passes when hashing is deterministic', () => {
-    expect(() => assertHashStability(v1.document, ['0:1', '6:6'])).not.toThrow();
+  it('throws on null response', () => {
+    expect(() => assertFigmaResponse(null)).toThrow(/malformed/);
   });
 });
 
-describe('assertDiffDisjoint', () => {
-  it('passes on disjoint sets', () => {
-    expect(() => assertDiffDisjoint({
-      changed: ['a'], added: ['b'], removed: ['c'],
-    })).not.toThrow();
+describe('fetchWithRetry', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it('throws when id in both changed and added', () => {
-    expect(() => assertDiffDisjoint({
-      changed: ['x'], added: ['x'], removed: [],
-    })).toThrow(/overlap/);
+  it('returns response immediately on 2xx', async () => {
+    const mockRes = { ok: true, status: 200 };
+    globalThis.fetch = vi.fn(async () => mockRes);
+    const res = await fetchWithRetry('http://x', {});
+    expect(res).toBe(mockRes);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('throws when id in both added and removed', () => {
-    expect(() => assertDiffDisjoint({
-      changed: [], added: ['x'], removed: ['x'],
-    })).toThrow(/overlap/);
+  it('returns 4xx (non-429) without retrying', async () => {
+    const mockRes = { ok: false, status: 404, headers: new Map() };
+    globalThis.fetch = vi.fn(async () => mockRes);
+    const res = await fetchWithRetry('http://x', {});
+    expect(res).toBe(mockRes);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('aborts when Retry-After exceeds 60s cap', async () => {
+    const headers = new Map([['retry-after', '374210']]);
+    const mockRes = { ok: false, status: 429, headers };
+    globalThis.fetch = vi.fn(async () => mockRes);
+    const res = await fetchWithRetry('http://x', {}, 3);
+    expect(res).toBe(mockRes);
+    // 一度呼ばれて即 abort（retry せず）
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('StateSchema', () => {
-  it('accepts valid state', () => {
-    const valid = {
-      checkedAt: '2026-08-10T14:00:00Z',
-      workflowRunId: 123,
-      fileKey: 'abc',
-      figmaVersion: '1000',
-      figmaLastModified: '2026-08-10T00:00:00Z',
-      treeHash: 'sha256:' + 'a'.repeat(64),
-      metaHash: 'sha256:' + 'c'.repeat(64),
-      perFrameHash: { '0:1': 'sha256:' + 'b'.repeat(64) },
-      changedSinceLastRun: ['0:1'],
-      added: [],
-      removed: [],
-      metaChanged: false,
+describe('StateSchema (v3)', () => {
+  const validState = {
+    schemaVersion: 3,
+    figmaVersion: 'v100',
+    figmaLastModified: '2026-08-17T00:00:00Z',
+    checkedAt: '2026-08-17T00:00:00Z',
+    workflowRunId: 123,
+    hasChanges: true,
+    fileKey: 'abc',
+  };
+
+  it('accepts valid v3 state', () => {
+    expect(() => StateSchema.parse(validState)).not.toThrow();
+  });
+
+  it('accepts workflowRunId=null', () => {
+    expect(() => StateSchema.parse({ ...validState, workflowRunId: null })).not.toThrow();
+  });
+
+  it('rejects schemaVersion != 3', () => {
+    expect(() => StateSchema.parse({ ...validState, schemaVersion: 2 })).toThrow();
+  });
+
+  it('rejects missing hasChanges', () => {
+    const { hasChanges, ...rest } = validState;
+    expect(() => StateSchema.parse(rest)).toThrow();
+  });
+
+  it('rejects v2-style state with textSnapshot (clean break)', () => {
+    const v2State = {
+      ...validState,
+      schemaVersion: 2,
+      textSnapshot: {},
     };
-    expect(() => StateSchema.parse(valid)).not.toThrow();
-  });
-
-  it('rejects invalid hash format', () => {
-    const invalid = {
-      checkedAt: '2026-08-10T14:00:00Z',
-      workflowRunId: null,
-      fileKey: 'abc',
-      figmaVersion: '1000',
-      figmaLastModified: '2026-08-10T00:00:00Z',
-      treeHash: 'not-a-hash',
-      metaHash: 'sha256:' + 'c'.repeat(64),
-      perFrameHash: {},
-      changedSinceLastRun: [],
-      added: [],
-      removed: [],
-      metaChanged: false,
-    };
-    expect(() => StateSchema.parse(invalid)).toThrow();
+    expect(() => StateSchema.parse(v2State)).toThrow();
   });
 });
 
@@ -430,6 +119,32 @@ describe('ConfigSchema', () => {
     })).not.toThrow();
   });
 
+  it('accepts config with langMap', () => {
+    expect(() => ConfigSchema.parse({
+      fileKey: 'abc',
+      frames: ['0:1', '6:6'],
+      lastSyncedVersion: null,
+      langMap: { '0:1': 'ja', '6:6': 'zh' },
+    })).not.toThrow();
+  });
+
+  it('accepts config without langMap (optional)', () => {
+    expect(() => ConfigSchema.parse({
+      fileKey: 'abc',
+      frames: ['0:1'],
+      lastSyncedVersion: null,
+    })).not.toThrow();
+  });
+
+  it('rejects non-string lang code', () => {
+    expect(() => ConfigSchema.parse({
+      fileKey: 'abc',
+      frames: ['0:1'],
+      lastSyncedVersion: null,
+      langMap: { '0:1': 123 },
+    })).toThrow();
+  });
+
   it('rejects legacy map-shaped frames', () => {
     expect(() => ConfigSchema.parse({
       fileKey: 'abc',
@@ -439,371 +154,176 @@ describe('ConfigSchema', () => {
   });
 });
 
-describe('runCheck integration', () => {
+describe('runCheck v3 integration', () => {
   let tmpDir;
   let configPath;
   let outPath;
 
   beforeEach(async () => {
-    tmpDir = join(tmpdir(), `figma-check-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    tmpDir = join(tmpdir(), `figma-check-v3-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     await mkdir(tmpDir, { recursive: true });
     configPath = join(tmpDir, 'config.json');
     outPath = join(tmpDir, 'state.json');
-
-    await writeFile(configPath, JSON.stringify({
-      fileKey: 'testkey',
-      frames: ['0:1', '6:6', '6:410'],
-      lastSyncedVersion: null,
-    }));
-
     process.env.FIGMA_TOKEN = 'fake-token';
   });
 
   afterEach(async () => {
     await rm(tmpDir, { recursive: true, force: true });
     vi.restoreAllMocks();
-  });
-
-  function mockFetch(depth1Response, fullResponse) {
-    global.fetch = vi.fn(async (url) => {
-      if (url.includes('depth=1')) {
-        return { ok: true, status: 200, json: async () => depth1Response };
-      }
-      return { ok: true, status: 200, json: async () => fullResponse };
-    });
-  }
-
-  it('first run: all registered frames go into added', async () => {
-    mockFetch(v1, v1);
-    const diff = await runCheck({ configPath, outPath });
-    expect(diff.added.sort()).toEqual(['0:1', '6:410', '6:6']);
-    expect(diff.changed).toEqual([]);
-    expect(diff.removed).toEqual([]);
-
-    const state = JSON.parse(await readFile(outPath, 'utf8'));
-    expect(state.figmaVersion).toBe(v1.version);
-    expect(Object.keys(state.perFrameHash).sort()).toEqual(['0:1', '6:410', '6:6']);
-  });
-
-  it('v1 → v2: only 6:6 in changed', async () => {
-    mockFetch(v1, v1);
-    await runCheck({ configPath, outPath });
-    // now use output as prev state
-    mockFetch(v2, v2);
-    const diff = await runCheck({ configPath, outPath, prevStatePath: outPath });
-    expect(diff.changed).toEqual(['6:6']);
-    expect(diff.added).toEqual([]);
-    expect(diff.removed).toEqual([]);
-  });
-
-  it('v1 → v3: added 9:999 is not in registered, no diff impact', async () => {
-    mockFetch(v1, v1);
-    await runCheck({ configPath, outPath });
-    mockFetch(v3, v3);
-    const diff = await runCheck({ configPath, outPath, prevStatePath: outPath });
-    // 9:999 is NOT in config.frames, so computePerFrameHash won't include it
-    expect(diff.changed).toEqual([]);
-    expect(diff.added).toEqual([]);
-    expect(diff.removed).toEqual([]);
-  });
-
-  it('v1 → v4: 6:410 removed → in removed array', async () => {
-    mockFetch(v1, v1);
-    await runCheck({ configPath, outPath });
-    mockFetch(v4, v4);
-    const diff = await runCheck({ configPath, outPath, prevStatePath: outPath });
-    expect(diff.removed).toEqual(['6:410']);
-    expect(diff.changed).toEqual([]);
-    expect(diff.added).toEqual([]);
-  });
-
-  it('version unchanged: early exit, no full pull', async () => {
-    mockFetch(v1, v1);
-    await runCheck({ configPath, outPath });
-
-    // reset mock counter, guard against full fetch
-    global.fetch = vi.fn(async (url) => {
-      if (url.includes('depth=1')) {
-        return { ok: true, status: 200, json: async () => v1 };
-      }
-      throw new Error('should NOT call full fetch');
-    });
-    const diff = await runCheck({ configPath, outPath, prevStatePath: outPath });
-    expect(diff).toEqual({ changed: [], added: [], removed: [], metaChanged: false });
-  });
-});
-
-describe('ConfigSchema v2 (langMap)', () => {
-  const baseConfig = {
-    fileKey: 'x',
-    frames: ['0:1', '6:6'],
-    lastSyncedVersion: null,
-  };
-
-  it('accepts config without langMap (backward compat)', () => {
-    expect(() => ConfigSchema.parse(baseConfig)).not.toThrow();
-  });
-
-  it('accepts config with langMap', () => {
-    const withMap = { ...baseConfig, langMap: { '0:1': 'ja', '6:6': 'zh' } };
-    expect(() => ConfigSchema.parse(withMap)).not.toThrow();
-  });
-
-  it('rejects non-string lang code', () => {
-    const invalid = { ...baseConfig, langMap: { '0:1': 123 } };
-    expect(() => ConfigSchema.parse(invalid)).toThrow();
-  });
-});
-
-describe('runCheck v2 integration', () => {
-  const testTmpDir = join(tmpdir(), 'figma-check-v2-test');
-
-  beforeEach(async () => {
-    await mkdir(testTmpDir, { recursive: true });
-  });
-
-  afterEach(async () => {
-    await rm(testTmpDir, { recursive: true, force: true });
     delete process.env.FIGMA_TOKEN;
   });
 
-  it('writes textSnapshot and changedTexts on second run', async () => {
-    process.env.FIGMA_TOKEN = 'test-token';
-
-    // First tree: 1 text
-    const tree1 = {
-      name: 'Sudoku', lastModified: '2026-08-17T00:00:00Z', version: 'v1',
-      styles: {}, components: {}, componentSets: {},
-      document: {
-        id: '0:0', type: 'DOCUMENT',
-        children: [
-          {
-            id: '0:1', type: 'CANVAS',
-            children: [{ id: '103:4', type: 'TEXT', characters: '新しいゲーム' }],
-          },
-        ],
-      },
-    };
-    // Second tree: same node id, changed text
-    const tree2 = {
-      ...tree1, version: 'v2',
-      document: {
-        ...tree1.document,
-        children: [
-          {
-            id: '0:1', type: 'CANVAS',
-            children: [{ id: '103:4', type: 'TEXT', characters: '新しいゲーム123' }],
-          },
-        ],
-      },
-    };
-
-    const configPath = join(testTmpDir, 'config.json');
-    const prevPath = join(testTmpDir, 'prev.json');
-    const outPath = join(testTmpDir, 'out.json');
-    await writeFile(configPath, JSON.stringify({ fileKey: 'k', frames: ['0:1'], lastSyncedVersion: null }));
-
-    let callCount = 0;
-    const origFetch = globalThis.fetch;
+  function mockDepth1(depth1Response) {
     globalThis.fetch = vi.fn(async (url) => {
-      callCount++;
-      const tree = callCount <= 2 ? tree1 : tree2;
-      return { ok: true, status: 200, json: async () => tree, text: async () => '', headers: new Map() };
+      if (!url.includes('depth=1')) {
+        throw new Error(`v3 should ONLY call depth=1, got: ${url}`);
+      }
+      return { ok: true, status: 200, json: async () => depth1Response };
     });
-
-    // Run 1: baseline (no prev)
-    await runCheck({ configPath, outPath: prevPath, prevStatePath: null });
-    const state1 = JSON.parse(await readFile(prevPath, 'utf8'));
-    expect(state1.textSnapshot).toEqual({ '0:1': { '103:4': { text: '新しいゲーム' } } });
-    expect(state1.changedTexts).toEqual([]); // baseline: no prev → no diff
-
-    // Run 2: with prev state, changed text
-    await runCheck({ configPath, outPath, prevStatePath: prevPath });
-    const state2 = JSON.parse(await readFile(outPath, 'utf8'));
-    expect(state2.textSnapshot).toEqual({ '0:1': { '103:4': { text: '新しいゲーム123' } } });
-    expect(state2.changedTexts).toEqual([
-      { frameId: '0:1', textLayerId: '103:4', before: '新しいゲーム', after: '新しいゲーム123', action: 'modified' },
-    ]);
-    expect(state2.schemaVersion).toBe(2);
-
-    globalThis.fetch = origFetch;
-  });
-
-  it('treats v1→v2 transition (prev has empty textSnapshot) as baseline', async () => {
-    process.env.FIGMA_TOKEN = 'test-token';
-
-    // v1-like prev state with empty textSnapshot (from early-exit path before fix)
-    // and different figmaVersion so full fetch triggers
-    const v1LikePrev = {
-      checkedAt: '2026-08-17T00:00:00Z',
-      workflowRunId: null,
-      fileKey: 'k',
-      figmaVersion: 'old-version',
-      figmaLastModified: '2026-08-01T00:00:00Z',
-      treeHash: 'sha256:' + 'a'.repeat(64),
-      metaHash: 'sha256:' + 'b'.repeat(64),
-      perFrameHash: {},
-      changedSinceLastRun: [],
-      added: [],
-      removed: [],
-      metaChanged: false,
-      schemaVersion: 2,
-      textSnapshot: {}, // ← v1→v2 transition の状態
-      changedTexts: [],
-    };
-
-    const tree = {
-      name: 'Sudoku', lastModified: '2026-08-17T00:00:00Z', version: 'new-version',
-      styles: {}, components: {}, componentSets: {},
-      document: {
-        id: '0:0', type: 'DOCUMENT',
-        children: [
-          {
-            id: '0:1', type: 'CANVAS',
-            children: [{ id: '103:4', type: 'TEXT', characters: 'Hello' }],
-          },
-        ],
-      },
-    };
-
-    const configPath = join(testTmpDir, 'config-v12.json');
-    const prevPath = join(testTmpDir, 'prev-v12.json');
-    const outPath = join(testTmpDir, 'out-v12.json');
-    await writeFile(configPath, JSON.stringify({ fileKey: 'k', frames: ['0:1'], lastSyncedVersion: null }));
-    await writeFile(prevPath, JSON.stringify(v1LikePrev));
-
-    const origFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true, status: 200, json: async () => tree, text: async () => '', headers: new Map(),
-    }));
-
-    await runCheck({ configPath, outPath, prevStatePath: prevPath });
-    const state = JSON.parse(await readFile(outPath, 'utf8'));
-
-    // textSnapshot は今回の fetch で正しく populated
-    expect(state.textSnapshot).toEqual({ '0:1': { '103:4': { text: 'Hello' } } });
-    // baseline なので changedTexts は空（"全 text as added" 事故防止）
-    expect(state.changedTexts).toEqual([]);
-
-    globalThis.fetch = origFetch;
-  });
-});
-
-describe('runCheck race condition (v2.2)', () => {
-  const testTmpDir = join(tmpdir(), 'figma-check-race-test');
-
-  beforeEach(async () => {
-    await mkdir(testTmpDir, { recursive: true });
-    process.env.FIGMA_TOKEN = 'test-token';
-  });
-
-  afterEach(async () => {
-    await rm(testTmpDir, { recursive: true, force: true });
-    delete process.env.FIGMA_TOKEN;
-    vi.restoreAllMocks();
-  });
-
-  // 共通：prev.figmaVersion と同じ version を返す depth1 mock
-  function mockUnchangedFetch(version) {
-    globalThis.fetch = vi.fn(async () => ({
-      ok: true, status: 200,
-      json: async () => ({
-        name: 'Sudoku', lastModified: '2026-08-17T00:00:00Z', version,
-        styles: {}, components: {}, componentSets: {},
-        document: { id: '0:0', type: 'DOCUMENT', children: [] },
-      }),
-      text: async () => '',
-      headers: new Map(),
-    }));
   }
 
-  it('preserves prev changedTexts on early exit when skill has not acknowledged', async () => {
-    // Setup: prev state has changedTexts (unconsumed), figmaVersion=v6
-    //        config.lastSyncedVersion=v5 (skill hasn't caught up)
-    //        Figma depth1 returns v6 (unchanged → early exit path)
-    const unconsumedChanges = [
-      { frameId: '0:1', textLayerId: '103:4', before: 'Old', after: 'New', action: 'modified' },
-    ];
-    const prevState = {
-      checkedAt: '2026-08-17T00:00:00Z',
-      workflowRunId: null,
-      fileKey: 'k',
-      figmaVersion: 'v6',
-      figmaLastModified: '2026-08-17T00:00:00Z',
-      treeHash: 'sha256:' + 'a'.repeat(64),
-      metaHash: 'sha256:' + 'b'.repeat(64),
-      perFrameHash: { '0:1': 'sha256:' + 'c'.repeat(64) },
-      changedSinceLastRun: [],
-      added: [],
-      removed: [],
-      metaChanged: false,
-      schemaVersion: 2,
-      textSnapshot: { '0:1': { '103:4': { text: 'New' } } },
-      changedTexts: unconsumedChanges,
-    };
-
-    const configPath = join(testTmpDir, 'config-race1.json');
-    const prevPath = join(testTmpDir, 'prev-race1.json');
-    const outPath = join(testTmpDir, 'out-race1.json');
+  it('first run (no prev state): hasChanges=true, writes v3 state', async () => {
     await writeFile(configPath, JSON.stringify({
-      fileKey: 'k', frames: ['0:1'], lastSyncedVersion: 'v5', // ← skill 未追随
+      fileKey: 'testkey',
+      frames: ['0:1', '6:6'],
+      lastSyncedVersion: null,
     }));
-    await writeFile(prevPath, JSON.stringify(prevState));
 
-    mockUnchangedFetch('v6');
+    mockDepth1({ version: 'v1', lastModified: '2026-08-17T00:00:00Z' });
 
-    await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    const result = await runCheck({ configPath, outPath });
+    expect(result.hasChanges).toBe(true);
+    expect(result.figmaVersion).toBe('v1');
+
     const state = JSON.parse(await readFile(outPath, 'utf8'));
-
-    // 修正の要：早期 exit しても changedTexts が消えていない
-    expect(state.changedTexts).toEqual(unconsumedChanges);
-    expect(state.figmaVersion).toBe('v6');
-    // 他の diff array は reset されている
-    expect(state.changedSinceLastRun).toEqual([]);
-    expect(state.added).toEqual([]);
-    expect(state.removed).toEqual([]);
+    expect(state.schemaVersion).toBe(3);
+    expect(state.figmaVersion).toBe('v1');
+    expect(state.hasChanges).toBe(true);
+    expect(state.fileKey).toBe('testkey');
+    // v3 は絶対 full fetch しない
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('clears changedTexts when skill has acknowledged (lastSyncedVersion == figmaVersion)', async () => {
-    // Setup: prev state has stale changedTexts, figmaVersion=v6
-    //        config.lastSyncedVersion=v6 (skill applied 済み)
-    //        Figma depth1 returns v6 (unchanged)
-    const staleChanges = [
-      { frameId: '0:1', textLayerId: '103:4', before: 'Old', after: 'New', action: 'modified' },
-    ];
-    const prevState = {
+  it('version unchanged + skill acknowledged: hasChanges=false', async () => {
+    await writeFile(configPath, JSON.stringify({
+      fileKey: 'testkey',
+      frames: ['0:1'],
+      lastSyncedVersion: 'v1',
+    }));
+    const prevPath = join(tmpDir, 'prev.json');
+    await writeFile(prevPath, JSON.stringify({
+      schemaVersion: 3,
+      figmaVersion: 'v1',
+      figmaLastModified: '2026-08-17T00:00:00Z',
       checkedAt: '2026-08-17T00:00:00Z',
       workflowRunId: null,
-      fileKey: 'k',
-      figmaVersion: 'v6',
-      figmaLastModified: '2026-08-17T00:00:00Z',
-      treeHash: 'sha256:' + 'a'.repeat(64),
-      metaHash: 'sha256:' + 'b'.repeat(64),
-      perFrameHash: { '0:1': 'sha256:' + 'c'.repeat(64) },
-      changedSinceLastRun: [],
-      added: [],
-      removed: [],
-      metaChanged: false,
-      schemaVersion: 2,
-      textSnapshot: { '0:1': { '103:4': { text: 'New' } } },
-      changedTexts: staleChanges,
-    };
-
-    const configPath = join(testTmpDir, 'config-race2.json');
-    const prevPath = join(testTmpDir, 'prev-race2.json');
-    const outPath = join(testTmpDir, 'out-race2.json');
-    await writeFile(configPath, JSON.stringify({
-      fileKey: 'k', frames: ['0:1'], lastSyncedVersion: 'v6', // ← skill 反映済み
+      hasChanges: false,
+      fileKey: 'testkey',
     }));
-    await writeFile(prevPath, JSON.stringify(prevState));
 
-    mockUnchangedFetch('v6');
+    mockDepth1({ version: 'v1', lastModified: '2026-08-17T00:00:00Z' });
 
-    await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    const result = await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    expect(result.hasChanges).toBe(false);
+
     const state = JSON.parse(await readFile(outPath, 'utf8'));
+    expect(state.hasChanges).toBe(false);
+    expect(state.figmaVersion).toBe('v1');
+  });
 
-    // skill が ack 済み → clear が正しい挙動
-    expect(state.changedTexts).toEqual([]);
-    expect(state.figmaVersion).toBe('v6');
+  it('version changed: hasChanges=true', async () => {
+    await writeFile(configPath, JSON.stringify({
+      fileKey: 'testkey',
+      frames: ['0:1'],
+      lastSyncedVersion: 'v1',
+    }));
+    const prevPath = join(tmpDir, 'prev.json');
+    await writeFile(prevPath, JSON.stringify({
+      schemaVersion: 3,
+      figmaVersion: 'v1',
+      figmaLastModified: '2026-08-17T00:00:00Z',
+      checkedAt: '2026-08-17T00:00:00Z',
+      workflowRunId: null,
+      hasChanges: false,
+      fileKey: 'testkey',
+    }));
+
+    mockDepth1({ version: 'v2', lastModified: '2026-08-17T01:00:00Z' });
+
+    const result = await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    expect(result.hasChanges).toBe(true);
+    expect(result.figmaVersion).toBe('v2');
+  });
+
+  it('prev.figmaVersion matches but lastSyncedVersion stale: hasChanges=true (skill未追随)', async () => {
+    // scenario: workflow が既に v2 を検知して state 書いたが、skill がまだ v1 のまま
+    // → 次の workflow は依然 hasChanges=true を保つべき
+    await writeFile(configPath, JSON.stringify({
+      fileKey: 'testkey',
+      frames: ['0:1'],
+      lastSyncedVersion: 'v1', // skill 未追随
+    }));
+    const prevPath = join(tmpDir, 'prev.json');
+    await writeFile(prevPath, JSON.stringify({
+      schemaVersion: 3,
+      figmaVersion: 'v2',
+      figmaLastModified: '2026-08-17T00:00:00Z',
+      checkedAt: '2026-08-17T00:00:00Z',
+      workflowRunId: null,
+      hasChanges: true,
+      fileKey: 'testkey',
+    }));
+
+    mockDepth1({ version: 'v2', lastModified: '2026-08-17T00:00:00Z' });
+
+    const result = await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    expect(result.hasChanges).toBe(true);
+  });
+
+  it('reads GITHUB_RUN_ID into workflowRunId', async () => {
+    process.env.GITHUB_RUN_ID = '456';
+    await writeFile(configPath, JSON.stringify({
+      fileKey: 'testkey', frames: ['0:1'], lastSyncedVersion: null,
+    }));
+    mockDepth1({ version: 'v1', lastModified: '2026-08-17T00:00:00Z' });
+
+    await runCheck({ configPath, outPath });
+    const state = JSON.parse(await readFile(outPath, 'utf8'));
+    expect(state.workflowRunId).toBe(456);
+
+    delete process.env.GITHUB_RUN_ID;
+  });
+
+  it('missing FIGMA_TOKEN throws', async () => {
+    delete process.env.FIGMA_TOKEN;
+    await writeFile(configPath, JSON.stringify({
+      fileKey: 'testkey', frames: ['0:1'], lastSyncedVersion: null,
+    }));
+    await expect(runCheck({ configPath, outPath })).rejects.toThrow(/FIGMA_TOKEN/);
+  });
+
+  it('malformed prev state file: treats as first run (does not crash)', async () => {
+    await writeFile(configPath, JSON.stringify({
+      fileKey: 'testkey', frames: ['0:1'], lastSyncedVersion: null,
+    }));
+    const prevPath = join(tmpDir, 'prev.json');
+    await writeFile(prevPath, 'not-json{{{');
+
+    mockDepth1({ version: 'v1', lastModified: '2026-08-17T00:00:00Z' });
+
+    const result = await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    expect(result.hasChanges).toBe(true);
+  });
+
+  it('missing prev state file (ENOENT): silent, treats as first run', async () => {
+    await writeFile(configPath, JSON.stringify({
+      fileKey: 'testkey', frames: ['0:1'], lastSyncedVersion: null,
+    }));
+    const prevPath = join(tmpDir, 'does-not-exist.json');
+
+    mockDepth1({ version: 'v1', lastModified: '2026-08-17T00:00:00Z' });
+
+    const result = await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    expect(result.hasChanges).toBe(true);
   });
 });
