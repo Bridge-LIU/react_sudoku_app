@@ -196,6 +196,45 @@ describe('diffTextSnapshots', () => {
   });
 });
 
+describe('StateSchema v2', () => {
+  const baseState = {
+    checkedAt: '2026-08-17T00:00:00Z',
+    workflowRunId: null,
+    fileKey: 'x',
+    figmaVersion: 'v1',
+    figmaLastModified: '2026-08-17T00:00:00Z',
+    treeHash: 'sha256:' + 'a'.repeat(64),
+    metaHash: 'sha256:' + 'b'.repeat(64),
+    perFrameHash: {},
+    changedSinceLastRun: [],
+    added: [],
+    removed: [],
+    metaChanged: false,
+  };
+
+  it('accepts v1 state without textSnapshot/changedTexts (backward compat)', () => {
+    expect(() => StateSchema.parse(baseState)).not.toThrow();
+  });
+
+  it('accepts v2 state with textSnapshot + changedTexts', () => {
+    const v2 = {
+      ...baseState,
+      schemaVersion: 2,
+      textSnapshot: { '0:1': { '0:2': { text: 'Hi' } } },
+      changedTexts: [{ frameId: '0:1', textLayerId: '0:2', before: null, after: 'Hi', action: 'added' }],
+    };
+    expect(() => StateSchema.parse(v2)).not.toThrow();
+  });
+
+  it('rejects invalid changedTexts action value', () => {
+    const invalid = {
+      ...baseState,
+      changedTexts: [{ frameId: '0:1', textLayerId: '0:2', before: null, after: 'X', action: 'weird' }],
+    };
+    expect(() => StateSchema.parse(invalid)).toThrow();
+  });
+});
+
 describe('computePerFrameHash', () => {
   it('produces one entry per registered id that exists', () => {
     const hash = computePerFrameHash(v1.document, ['0:1', '6:6', '6:410']);

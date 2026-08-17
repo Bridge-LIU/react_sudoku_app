@@ -209,6 +209,19 @@ export async function fetchFigmaFull(fileKey, token) {
   return res.json();
 }
 
+export const TextSnapshotSchema = z.record(
+  z.string(),
+  z.record(z.string(), z.object({ text: z.string(), style: z.string().optional() }))
+);
+
+export const ChangedTextSchema = z.object({
+  frameId: z.string(),
+  textLayerId: z.string(),
+  before: z.string().nullable(),
+  after: z.string().nullable(),
+  action: z.enum(['added', 'modified', 'removed']),
+});
+
 export const StateSchema = z.object({
   checkedAt: z.string(),
   workflowRunId: z.number().nullable(),
@@ -222,6 +235,11 @@ export const StateSchema = z.object({
   added: z.array(z.string()),
   removed: z.array(z.string()),
   metaChanged: z.boolean(),
+
+  // v2 optional (backward compat with v1 state)
+  schemaVersion: z.literal(2).optional(),
+  textSnapshot: TextSnapshotSchema.optional(),
+  changedTexts: z.array(ChangedTextSchema).optional(),
 });
 
 export const ConfigSchema = z.object({
