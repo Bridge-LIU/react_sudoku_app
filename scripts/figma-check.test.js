@@ -532,3 +532,25 @@ describe('runCheck integration', () => {
     expect(diff).toEqual({ changed: [], added: [], removed: [], metaChanged: false });
   });
 });
+
+describe('ConfigSchema v2 (langMap)', () => {
+  const baseConfig = {
+    fileKey: 'x',
+    frames: ['0:1', '6:6'],
+    lastSyncedVersion: null,
+  };
+
+  it('accepts config without langMap (backward compat)', () => {
+    expect(() => ConfigSchema.parse(baseConfig)).not.toThrow();
+  });
+
+  it('accepts config with langMap', () => {
+    const withMap = { ...baseConfig, langMap: { '0:1': 'ja', '6:6': 'zh' } };
+    expect(() => ConfigSchema.parse(withMap)).not.toThrow();
+  });
+
+  it('rejects non-string lang code', () => {
+    const invalid = { ...baseConfig, langMap: { '0:1': 123 } };
+    expect(() => ConfigSchema.parse(invalid)).toThrow();
+  });
+});

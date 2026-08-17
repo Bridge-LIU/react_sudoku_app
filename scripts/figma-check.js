@@ -250,6 +250,10 @@ export const ConfigSchema = z.object({
   frames: z.array(z.string()),
   assetsRoot: z.string().optional(),
   lastSyncedVersion: z.string().nullable(),
+
+  // v2 optional: frame nodeId → lang code map (e.g. "0:1" → "ja")
+  // 未定義なら v1 の暗黙順序フォールバック（frames[0]=ja, frames[1]=zh, ...）
+  langMap: z.record(z.string(), z.string()).optional(),
 });
 
 export async function runCheck({ configPath, outPath, prevStatePath }) {
