@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-08-17T05:28:41.173Z",
-  "workflowRunId": 31998000396,
+  "checkedAt": "2026-08-17T06:17:43.720Z",
+  "workflowRunId": 32001016066,
   "fileKey": "cwmewA4MTWktw6E7uhQFK2",
   "figmaVersion": "2388537033937423489",
   "figmaLastModified": "2026-08-17T05:06:23Z",
@@ -14,5 +14,8 @@
   "changedSinceLastRun": [],
   "added": [],
   "removed": [],
-  "metaChanged": false
+  "metaChanged": false,
+  "schemaVersion": 2,
+  "textSnapshot": {},
+  "changedTexts": []
 }
