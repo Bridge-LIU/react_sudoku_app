@@ -49,6 +49,32 @@ export function extractTextSnapshot(tree, registeredIds) {
   return result;
 }
 
+export function diffTextSnapshots(prev, curr) {
+  const changes = [];
+  const prevSnap = prev || {};
+  const allFrameIds = new Set([...Object.keys(prevSnap), ...Object.keys(curr)]);
+
+  for (const frameId of allFrameIds) {
+    const prevTexts = prevSnap[frameId] || {};
+    const currTexts = curr[frameId] || {};
+    const allTextIds = new Set([...Object.keys(prevTexts), ...Object.keys(currTexts)]);
+
+    for (const textId of allTextIds) {
+      const before = prevTexts[textId]?.text ?? null;
+      const after = currTexts[textId]?.text ?? null;
+
+      if (before === null && after !== null) {
+        changes.push({ frameId, textLayerId: textId, before: null, after, action: 'added' });
+      } else if (before !== null && after === null) {
+        changes.push({ frameId, textLayerId: textId, before, after: null, action: 'removed' });
+      } else if (before !== after) {
+        changes.push({ frameId, textLayerId: textId, before, after, action: 'modified' });
+      }
+    }
+  }
+  return changes;
+}
+
 export function computePerFrameHash(tree, registeredIds) {
   const result = {};
   for (const id of registeredIds) {

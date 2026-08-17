@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { canonicalize, sha256, findNode, extractTextNodes, extractTextSnapshot, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema, runCheck } from './figma-check.js';
+import { canonicalize, sha256, findNode, extractTextNodes, extractTextSnapshot, diffTextSnapshots, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema, runCheck } from './figma-check.js';
 import { readFileSync } from 'node:fs';
 import { writeFile, readFile, mkdir, rm } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
@@ -146,6 +146,53 @@ describe('extractTextSnapshot', () => {
 
   it('returns empty object for empty registered ids', () => {
     expect(extractTextSnapshot(tree, [])).toEqual({});
+  });
+});
+
+describe('diffTextSnapshots', () => {
+  it('detects added text node', () => {
+    const prev = { '0:1': {} };
+    const curr = { '0:1': { '0:2': { text: 'Hello' } } };
+    expect(diffTextSnapshots(prev, curr)).toEqual([
+      { frameId: '0:1', textLayerId: '0:2', before: null, after: 'Hello', action: 'added' },
+    ]);
+  });
+
+  it('detects modified text node', () => {
+    const prev = { '0:1': { '0:2': { text: 'Old' } } };
+    const curr = { '0:1': { '0:2': { text: 'New' } } };
+    expect(diffTextSnapshots(prev, curr)).toEqual([
+      { frameId: '0:1', textLayerId: '0:2', before: 'Old', after: 'New', action: 'modified' },
+    ]);
+  });
+
+  it('detects removed text node', () => {
+    const prev = { '0:1': { '0:2': { text: 'Bye' } } };
+    const curr = { '0:1': {} };
+    expect(diffTextSnapshots(prev, curr)).toEqual([
+      { frameId: '0:1', textLayerId: '0:2', before: 'Bye', after: null, action: 'removed' },
+    ]);
+  });
+
+  it('handles null prev as all added', () => {
+    const curr = { '0:1': { '0:2': { text: 'X' } } };
+    expect(diffTextSnapshots(null, curr)).toEqual([
+      { frameId: '0:1', textLayerId: '0:2', before: null, after: 'X', action: 'added' },
+    ]);
+  });
+
+  it('returns empty array when no changes', () => {
+    const snap = { '0:1': { '0:2': { text: 'Same' } } };
+    expect(diffTextSnapshots(snap, snap)).toEqual([]);
+  });
+
+  it('handles multiple frames + multiple changes', () => {
+    const prev = { '0:1': { '0:2': { text: 'A' } }, '6:6': {} };
+    const curr = { '0:1': { '0:2': { text: 'B' } }, '6:6': { '6:7': { text: 'C' } } };
+    const result = diffTextSnapshots(prev, curr);
+    expect(result).toHaveLength(2);
+    expect(result).toContainEqual({ frameId: '0:1', textLayerId: '0:2', before: 'A', after: 'B', action: 'modified' });
+    expect(result).toContainEqual({ frameId: '6:6', textLayerId: '6:7', before: null, after: 'C', action: 'added' });
   });
 });
 
