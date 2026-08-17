@@ -688,3 +688,122 @@ describe('runCheck v2 integration', () => {
     globalThis.fetch = origFetch;
   });
 });
+
+describe('runCheck race condition (v2.2)', () => {
+  const testTmpDir = join(tmpdir(), 'figma-check-race-test');
+
+  beforeEach(async () => {
+    await mkdir(testTmpDir, { recursive: true });
+    process.env.FIGMA_TOKEN = 'test-token';
+  });
+
+  afterEach(async () => {
+    await rm(testTmpDir, { recursive: true, force: true });
+    delete process.env.FIGMA_TOKEN;
+    vi.restoreAllMocks();
+  });
+
+  // 共通：prev.figmaVersion と同じ version を返す depth1 mock
+  function mockUnchangedFetch(version) {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true, status: 200,
+      json: async () => ({
+        name: 'Sudoku', lastModified: '2026-08-17T00:00:00Z', version,
+        styles: {}, components: {}, componentSets: {},
+        document: { id: '0:0', type: 'DOCUMENT', children: [] },
+      }),
+      text: async () => '',
+      headers: new Map(),
+    }));
+  }
+
+  it('preserves prev changedTexts on early exit when skill has not acknowledged', async () => {
+    // Setup: prev state has changedTexts (unconsumed), figmaVersion=v6
+    //        config.lastSyncedVersion=v5 (skill hasn't caught up)
+    //        Figma depth1 returns v6 (unchanged → early exit path)
+    const unconsumedChanges = [
+      { frameId: '0:1', textLayerId: '103:4', before: 'Old', after: 'New', action: 'modified' },
+    ];
+    const prevState = {
+      checkedAt: '2026-08-17T00:00:00Z',
+      workflowRunId: null,
+      fileKey: 'k',
+      figmaVersion: 'v6',
+      figmaLastModified: '2026-08-17T00:00:00Z',
+      treeHash: 'sha256:' + 'a'.repeat(64),
+      metaHash: 'sha256:' + 'b'.repeat(64),
+      perFrameHash: { '0:1': 'sha256:' + 'c'.repeat(64) },
+      changedSinceLastRun: [],
+      added: [],
+      removed: [],
+      metaChanged: false,
+      schemaVersion: 2,
+      textSnapshot: { '0:1': { '103:4': { text: 'New' } } },
+      changedTexts: unconsumedChanges,
+    };
+
+    const configPath = join(testTmpDir, 'config-race1.json');
+    const prevPath = join(testTmpDir, 'prev-race1.json');
+    const outPath = join(testTmpDir, 'out-race1.json');
+    await writeFile(configPath, JSON.stringify({
+      fileKey: 'k', frames: ['0:1'], lastSyncedVersion: 'v5', // ← skill 未追随
+    }));
+    await writeFile(prevPath, JSON.stringify(prevState));
+
+    mockUnchangedFetch('v6');
+
+    await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    const state = JSON.parse(await readFile(outPath, 'utf8'));
+
+    // 修正の要：早期 exit しても changedTexts が消えていない
+    expect(state.changedTexts).toEqual(unconsumedChanges);
+    expect(state.figmaVersion).toBe('v6');
+    // 他の diff array は reset されている
+    expect(state.changedSinceLastRun).toEqual([]);
+    expect(state.added).toEqual([]);
+    expect(state.removed).toEqual([]);
+  });
+
+  it('clears changedTexts when skill has acknowledged (lastSyncedVersion == figmaVersion)', async () => {
+    // Setup: prev state has stale changedTexts, figmaVersion=v6
+    //        config.lastSyncedVersion=v6 (skill applied 済み)
+    //        Figma depth1 returns v6 (unchanged)
+    const staleChanges = [
+      { frameId: '0:1', textLayerId: '103:4', before: 'Old', after: 'New', action: 'modified' },
+    ];
+    const prevState = {
+      checkedAt: '2026-08-17T00:00:00Z',
+      workflowRunId: null,
+      fileKey: 'k',
+      figmaVersion: 'v6',
+      figmaLastModified: '2026-08-17T00:00:00Z',
+      treeHash: 'sha256:' + 'a'.repeat(64),
+      metaHash: 'sha256:' + 'b'.repeat(64),
+      perFrameHash: { '0:1': 'sha256:' + 'c'.repeat(64) },
+      changedSinceLastRun: [],
+      added: [],
+      removed: [],
+      metaChanged: false,
+      schemaVersion: 2,
+      textSnapshot: { '0:1': { '103:4': { text: 'New' } } },
+      changedTexts: staleChanges,
+    };
+
+    const configPath = join(testTmpDir, 'config-race2.json');
+    const prevPath = join(testTmpDir, 'prev-race2.json');
+    const outPath = join(testTmpDir, 'out-race2.json');
+    await writeFile(configPath, JSON.stringify({
+      fileKey: 'k', frames: ['0:1'], lastSyncedVersion: 'v6', // ← skill 反映済み
+    }));
+    await writeFile(prevPath, JSON.stringify(prevState));
+
+    mockUnchangedFetch('v6');
+
+    await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    const state = JSON.parse(await readFile(outPath, 'utf8'));
+
+    // skill が ack 済み → clear が正しい挙動
+    expect(state.changedTexts).toEqual([]);
+    expect(state.figmaVersion).toBe('v6');
+  });
+});

@@ -286,6 +286,13 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
   // (v1→v2 transition: prevState is v1 (no textSnapshot) → skip early exit, force full fetch
   //  to build textSnapshot baseline; next sync's diff will then be accurate)
   const prevHasTextSnapshot = prevState?.textSnapshot && Object.keys(prevState.textSnapshot).length > 0;
+
+  // v2.2 race condition fix: skill が unconsumed changedTexts を持つ状態で cron が連続稼働すると、
+  // 早期 exit path が changedTexts を [] で上書きし、diff が silent に消失する bug があった。
+  // 修正: config.lastSyncedVersion === curr figmaVersion なら skill 側が反映済みと判断して clear、
+  // そうでなければ prev.changedTexts を保持して skill が消費できるようにする。
+  const skillHasAcknowledgedThisVersion = config.lastSyncedVersion === depth1.version;
+
   if (prevState && prevState.figmaVersion === depth1.version && prevHasTextSnapshot) {
     const state = {
       ...prevState,
@@ -299,11 +306,13 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
       // v2: preserve textSnapshot, empty changedTexts (no change)
       schemaVersion: 2,
       textSnapshot: prevState.textSnapshot,
-      changedTexts: [],
+      // skill が本 version を acknowledge 済みなら clear、未 ack なら preserve
+      // （skill 未消費の diff を勝手に消さない）
+      changedTexts: skillHasAcknowledgedThisVersion ? [] : (prevState.changedTexts || []),
     };
     StateSchema.parse(state);
     await writeFile(outPath, JSON.stringify(state, null, 2));
-    console.log(`no change (figma version ${depth1.version} matches prev state)`);
+    console.log(`no change (figma version ${depth1.version} matches prev state, changedTexts ${state.changedTexts.length} preserved=${!skillHasAcknowledgedThisVersion})`);
     return { changed: [], added: [], removed: [], metaChanged: false };
   }
 
