@@ -554,3 +554,78 @@ describe('ConfigSchema v2 (langMap)', () => {
     expect(() => ConfigSchema.parse(invalid)).toThrow();
   });
 });
+
+describe('runCheck v2 integration', () => {
+  const testTmpDir = join(tmpdir(), 'figma-check-v2-test');
+
+  beforeEach(async () => {
+    await mkdir(testTmpDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(testTmpDir, { recursive: true, force: true });
+    delete process.env.FIGMA_TOKEN;
+  });
+
+  it('writes textSnapshot and changedTexts on second run', async () => {
+    process.env.FIGMA_TOKEN = 'test-token';
+
+    // First tree: 1 text
+    const tree1 = {
+      name: 'Sudoku', lastModified: '2026-08-17T00:00:00Z', version: 'v1',
+      styles: {}, components: {}, componentSets: {},
+      document: {
+        id: '0:0', type: 'DOCUMENT',
+        children: [
+          {
+            id: '0:1', type: 'CANVAS',
+            children: [{ id: '103:4', type: 'TEXT', characters: '新しいゲーム' }],
+          },
+        ],
+      },
+    };
+    // Second tree: same node id, changed text
+    const tree2 = {
+      ...tree1, version: 'v2',
+      document: {
+        ...tree1.document,
+        children: [
+          {
+            id: '0:1', type: 'CANVAS',
+            children: [{ id: '103:4', type: 'TEXT', characters: '新しいゲーム123' }],
+          },
+        ],
+      },
+    };
+
+    const configPath = join(testTmpDir, 'config.json');
+    const prevPath = join(testTmpDir, 'prev.json');
+    const outPath = join(testTmpDir, 'out.json');
+    await writeFile(configPath, JSON.stringify({ fileKey: 'k', frames: ['0:1'], lastSyncedVersion: null }));
+
+    let callCount = 0;
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async (url) => {
+      callCount++;
+      const tree = callCount <= 2 ? tree1 : tree2;
+      return { ok: true, status: 200, json: async () => tree, text: async () => '', headers: new Map() };
+    });
+
+    // Run 1: baseline (no prev)
+    await runCheck({ configPath, outPath: prevPath, prevStatePath: null });
+    const state1 = JSON.parse(await readFile(prevPath, 'utf8'));
+    expect(state1.textSnapshot).toEqual({ '0:1': { '103:4': { text: '新しいゲーム' } } });
+    expect(state1.changedTexts).toEqual([]); // baseline: no prev → no diff
+
+    // Run 2: with prev state, changed text
+    await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    const state2 = JSON.parse(await readFile(outPath, 'utf8'));
+    expect(state2.textSnapshot).toEqual({ '0:1': { '103:4': { text: '新しいゲーム123' } } });
+    expect(state2.changedTexts).toEqual([
+      { frameId: '0:1', textLayerId: '103:4', before: '新しいゲーム', after: '新しいゲーム123', action: 'modified' },
+    ]);
+    expect(state2.schemaVersion).toBe(2);
+
+    globalThis.fetch = origFetch;
+  });
+});

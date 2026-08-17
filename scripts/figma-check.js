@@ -293,6 +293,10 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
       added: [],
       removed: [],
       metaChanged: false,
+      // v2: preserve textSnapshot, empty changedTexts (no change)
+      schemaVersion: 2,
+      textSnapshot: prevState.textSnapshot || {},
+      changedTexts: [],
     };
     StateSchema.parse(state);
     await writeFile(outPath, JSON.stringify(state, null, 2));
@@ -317,6 +321,15 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
   // 漏検リスク #1・#2 対応: metaHash 変化検出
   const metaChanged = prevState ? (prevState.metaHash !== currMetaHash) : true;
 
+  // v2: text snapshot + diff
+  // 「first run（prev なし）」は baseline とみなし changedTexts=[] にする
+  // → skill が「全 text を added として apply」する事故を防ぐ
+  const currTextSnapshot = extractTextSnapshot(full.document, registeredIds);
+  const prevTextSnapshot = prevState?.textSnapshot || null;
+  const changedTexts = prevTextSnapshot === null
+    ? []
+    : diffTextSnapshots(prevTextSnapshot, currTextSnapshot);
+
   // Build state
   const state = {
     checkedAt: new Date().toISOString(),
@@ -331,6 +344,10 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
     added: diff.added,
     removed: diff.removed,
     metaChanged,
+    // v2
+    schemaVersion: 2,
+    textSnapshot: currTextSnapshot,
+    changedTexts,
   };
 
   StateSchema.parse(state); // 自検 ②
