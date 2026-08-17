@@ -38,6 +38,17 @@ export function extractTextNodes(node) {
   return result;
 }
 
+export function extractTextSnapshot(tree, registeredIds) {
+  const result = {};
+  for (const id of registeredIds) {
+    const node = findNode(tree, id);
+    if (node) {
+      result[id] = extractTextNodes(node);
+    }
+  }
+  return result;
+}
+
 export function computePerFrameHash(tree, registeredIds) {
   const result = {};
   for (const id of registeredIds) {

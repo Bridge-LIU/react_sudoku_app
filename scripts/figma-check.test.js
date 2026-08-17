@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { canonicalize, sha256, findNode, extractTextNodes, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema, runCheck } from './figma-check.js';
+import { canonicalize, sha256, findNode, extractTextNodes, extractTextSnapshot, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema, runCheck } from './figma-check.js';
 import { readFileSync } from 'node:fs';
 import { writeFile, readFile, mkdir, rm } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
@@ -108,6 +108,44 @@ describe('extractTextNodes', () => {
   it('handles null / undefined gracefully', () => {
     expect(extractTextNodes(null)).toEqual({});
     expect(extractTextNodes(undefined)).toEqual({});
+  });
+});
+
+describe('extractTextSnapshot', () => {
+  const tree = {
+    id: '0:0', type: 'DOCUMENT',
+    children: [
+      {
+        id: '0:1', type: 'CANVAS',
+        children: [{ id: '0:2', type: 'TEXT', characters: 'JP' }],
+      },
+      {
+        id: '6:6', type: 'CANVAS',
+        children: [{ id: '6:7', type: 'TEXT', characters: 'ZH' }],
+      },
+      {
+        id: '6:410', type: 'CANVAS',
+        children: [], // 空
+      },
+    ],
+  };
+
+  it('produces snapshot keyed by registered frame id', () => {
+    const snap = extractTextSnapshot(tree, ['0:1', '6:6', '6:410']);
+    expect(snap).toEqual({
+      '0:1': { '0:2': { text: 'JP' } },
+      '6:6': { '6:7': { text: 'ZH' } },
+      '6:410': {},
+    });
+  });
+
+  it('omits ids not found in tree', () => {
+    const snap = extractTextSnapshot(tree, ['0:1', 'nonexistent:999']);
+    expect(Object.keys(snap)).toEqual(['0:1']);
+  });
+
+  it('returns empty object for empty registered ids', () => {
+    expect(extractTextSnapshot(tree, [])).toEqual({});
   });
 });
 
