@@ -14,7 +14,7 @@ export interface DifficultyPickerProps {
 const difficultyColor: Record<Difficulty, string> = {
   easy: colors.mint,
   medium: colors.peach,
-  hard: colors.coral,
+  hard: colors.hardBtn,
 };
 
 export function DifficultyPicker(props: DifficultyPickerProps) {

@@ -1,11 +1,12 @@
 {
+  "home": { "title": "新しいゲーム" },
   "difficulty": { "title": "難易度を選択", "label": "難易度", "easy": "初級", "medium": "中級", "hard": "上級" },
   "game": {
     "timer": "経過時間",
     "mistakes": "ミス",
     "hints": "ヒント",
     "reset": "リセット",
-    "resetConfirm": "本当にリセットしますか？",
+    "resetConfirm": "本当にリセットしますか？自動更新テスト",
     "undo": "元に戻す",
     "redo": "やり直し",
     "hintButton": "ヒント",
