@@ -31,9 +31,11 @@ export function DifficultyPicker(props: DifficultyPickerProps) {
     ...difficultyColorBase,
     hard: pickHardColor(i18n.language),
   };
+  // Figma strict SoT (sync5): JP page 内は「難易度を選択3」を render（他 lang は共通 title）
+  const titleKey = i18n.language === 'ja' ? 'difficulty.titleJp3' : 'difficulty.title';
   return (
     <View style={styles.container}>
-      <Text style={typography.h1}>{t('difficulty.title')}</Text>
+      <Text style={typography.h1}>{t(titleKey)}</Text>
       <View style={styles.buttons}>
         {options.map(d => (
           <Pressable

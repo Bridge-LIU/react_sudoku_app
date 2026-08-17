@@ -31,12 +31,6 @@
     "retryHint": "The board changed. Please press Hint again.",
     "unknownError": "Failed to get hint"
   },
-  "settings": {
-    "title": "Settings",
-    "showMistakes": "Show mistakes instantly",
-    "autoRemoveNotes": "Auto-remove notes on placement",
-    "language": "Language"
-  },
   "common": {
     "ok": "OK",
     "cancel": "Cancel"

@@ -31,12 +31,6 @@
     "retryHint": "盘面已变化，请再次点击提示。",
     "unknownError": "获取提示失败"
   },
-  "settings": {
-    "title": "设置",
-    "showMistakes": "即时显示错误",
-    "autoRemoveNotes": "确定时自动清理候选",
-    "language": "语言"
-  },
   "common": {
     "ok": "确定",
     "cancel": "取消"
