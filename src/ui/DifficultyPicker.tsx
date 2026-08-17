@@ -11,15 +11,26 @@ export interface DifficultyPickerProps {
 }
 
 // 難度 → bento pill 色 (視覚的にも「軽い→重い」を示唆)
-const difficultyColor: Record<Difficulty, string> = {
+// hard は言語別（Figma 準拠）: ZH=blue, JP=red, EN=coral(既存 fallback)
+const difficultyColorBase: Record<Difficulty, string> = {
   easy: colors.mint,
   medium: colors.peach,
-  hard: colors.hardBtn,
+  hard: colors.hardBtn,  // JP デフォルト
 };
 
+function pickHardColor(lang: string): string {
+  if (lang === 'zh') return colors.hardBtnBlue;
+  if (lang === 'en') return colors.coral;
+  return colors.hardBtn;  // ja + fallback
+}
+
 export function DifficultyPicker(props: DifficultyPickerProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const options: Difficulty[] = ['easy', 'medium', 'hard'];
+  const difficultyColor: Record<Difficulty, string> = {
+    ...difficultyColorBase,
+    hard: pickHardColor(i18n.language),
+  };
   return (
     <View style={styles.container}>
       <Text style={typography.h1}>{t('difficulty.title')}</Text>
