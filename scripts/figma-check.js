@@ -23,6 +23,58 @@ export function findNode(tree, nodeId) {
   return null;
 }
 
+export function extractTextNodes(node) {
+  const result = {};
+  function walk(n) {
+    if (!n || typeof n !== 'object') return;
+    if (n.type === 'TEXT' && n.id) {
+      result[n.id] = { text: n.characters || '' };
+    }
+    for (const child of n.children || []) {
+      walk(child);
+    }
+  }
+  walk(node);
+  return result;
+}
+
+export function extractTextSnapshot(tree, registeredIds) {
+  const result = {};
+  for (const id of registeredIds) {
+    const node = findNode(tree, id);
+    if (node) {
+      result[id] = extractTextNodes(node);
+    }
+  }
+  return result;
+}
+
+export function diffTextSnapshots(prev, curr) {
+  const changes = [];
+  const prevSnap = prev || {};
+  const allFrameIds = new Set([...Object.keys(prevSnap), ...Object.keys(curr)]);
+
+  for (const frameId of allFrameIds) {
+    const prevTexts = prevSnap[frameId] || {};
+    const currTexts = curr[frameId] || {};
+    const allTextIds = new Set([...Object.keys(prevTexts), ...Object.keys(currTexts)]);
+
+    for (const textId of allTextIds) {
+      const before = prevTexts[textId]?.text ?? null;
+      const after = currTexts[textId]?.text ?? null;
+
+      if (before === null && after !== null) {
+        changes.push({ frameId, textLayerId: textId, before: null, after, action: 'added' });
+      } else if (before !== null && after === null) {
+        changes.push({ frameId, textLayerId: textId, before, after: null, action: 'removed' });
+      } else if (before !== after) {
+        changes.push({ frameId, textLayerId: textId, before, after, action: 'modified' });
+      }
+    }
+  }
+  return changes;
+}
+
 export function computePerFrameHash(tree, registeredIds) {
   const result = {};
   for (const id of registeredIds) {
@@ -157,6 +209,19 @@ export async function fetchFigmaFull(fileKey, token) {
   return res.json();
 }
 
+export const TextSnapshotSchema = z.record(
+  z.string(),
+  z.record(z.string(), z.object({ text: z.string(), style: z.string().optional() }))
+);
+
+export const ChangedTextSchema = z.object({
+  frameId: z.string(),
+  textLayerId: z.string(),
+  before: z.string().nullable(),
+  after: z.string().nullable(),
+  action: z.enum(['added', 'modified', 'removed']),
+});
+
 export const StateSchema = z.object({
   checkedAt: z.string(),
   workflowRunId: z.number().nullable(),
@@ -170,6 +235,11 @@ export const StateSchema = z.object({
   added: z.array(z.string()),
   removed: z.array(z.string()),
   metaChanged: z.boolean(),
+
+  // v2 optional (backward compat with v1 state)
+  schemaVersion: z.literal(2).optional(),
+  textSnapshot: TextSnapshotSchema.optional(),
+  changedTexts: z.array(ChangedTextSchema).optional(),
 });
 
 export const ConfigSchema = z.object({
@@ -180,6 +250,10 @@ export const ConfigSchema = z.object({
   frames: z.array(z.string()),
   assetsRoot: z.string().optional(),
   lastSyncedVersion: z.string().nullable(),
+
+  // v2 optional: frame nodeId → lang code map (e.g. "0:1" → "ja")
+  // 未定義なら v1 の暗黙順序フォールバック（frames[0]=ja, frames[1]=zh, ...）
+  langMap: z.record(z.string(), z.string()).optional(),
 });
 
 export async function runCheck({ configPath, outPath, prevStatePath }) {
@@ -208,8 +282,11 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
   const depth1 = await fetchFigmaDepth1(config.fileKey, token);
   assertFigmaResponse(depth1);
 
-  // Early exit if version unchanged
-  if (prevState && prevState.figmaVersion === depth1.version) {
+  // Early exit if version unchanged AND textSnapshot already populated
+  // (v1→v2 transition: prevState is v1 (no textSnapshot) → skip early exit, force full fetch
+  //  to build textSnapshot baseline; next sync's diff will then be accurate)
+  const prevHasTextSnapshot = prevState?.textSnapshot && Object.keys(prevState.textSnapshot).length > 0;
+  if (prevState && prevState.figmaVersion === depth1.version && prevHasTextSnapshot) {
     const state = {
       ...prevState,
       checkedAt: new Date().toISOString(),
@@ -219,6 +296,10 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
       added: [],
       removed: [],
       metaChanged: false,
+      // v2: preserve textSnapshot, empty changedTexts (no change)
+      schemaVersion: 2,
+      textSnapshot: prevState.textSnapshot,
+      changedTexts: [],
     };
     StateSchema.parse(state);
     await writeFile(outPath, JSON.stringify(state, null, 2));
@@ -243,6 +324,17 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
   // 漏検リスク #1・#2 対応: metaHash 変化検出
   const metaChanged = prevState ? (prevState.metaHash !== currMetaHash) : true;
 
+  // v2: text snapshot + diff
+  // baseline とみなす条件：
+  //  - prev state なし（first run）
+  //  - prev.textSnapshot が空 or 未定義（v1→v2 transition の初回 full fetch）
+  // baseline 時は changedTexts=[] とし、skill が「全 text を added として apply」する事故を防ぐ
+  const currTextSnapshot = extractTextSnapshot(full.document, registeredIds);
+  const prevHasUsableSnapshot = prevState?.textSnapshot && Object.keys(prevState.textSnapshot).length > 0;
+  const changedTexts = prevHasUsableSnapshot
+    ? diffTextSnapshots(prevState.textSnapshot, currTextSnapshot)
+    : [];
+
   // Build state
   const state = {
     checkedAt: new Date().toISOString(),
@@ -257,6 +349,10 @@ export async function runCheck({ configPath, outPath, prevStatePath }) {
     added: diff.added,
     removed: diff.removed,
     metaChanged,
+    // v2
+    schemaVersion: 2,
+    textSnapshot: currTextSnapshot,
+    changedTexts,
   };
 
   StateSchema.parse(state); // 自検 ②

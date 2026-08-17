@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { canonicalize, sha256, findNode, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema, runCheck } from './figma-check.js';
+import { canonicalize, sha256, findNode, extractTextNodes, extractTextSnapshot, diffTextSnapshots, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema, runCheck } from './figma-check.js';
 import { readFileSync } from 'node:fs';
 import { writeFile, readFile, mkdir, rm } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
@@ -62,6 +62,176 @@ describe('findNode', () => {
 
   it('returns null for missing id', () => {
     expect(findNode(v1.document, '999:999')).toBeNull();
+  });
+});
+
+describe('extractTextNodes', () => {
+  it('returns empty object for node with no TEXT children', () => {
+    const node = { id: '0:1', type: 'CANVAS', children: [{ id: '0:2', type: 'FRAME' }] };
+    expect(extractTextNodes(node)).toEqual({});
+  });
+
+  it('extracts TEXT node with characters field', () => {
+    const node = {
+      id: '0:1', type: 'CANVAS',
+      children: [{ id: '0:2', type: 'TEXT', characters: 'Hello' }],
+    };
+    expect(extractTextNodes(node)).toEqual({
+      '0:2': { text: 'Hello' },
+    });
+  });
+
+  it('extracts TEXT nodes at deeper nesting', () => {
+    const node = {
+      id: '0:1', type: 'CANVAS',
+      children: [
+        {
+          id: '0:2', type: 'FRAME',
+          children: [
+            { id: '0:3', type: 'TEXT', characters: 'A' },
+            { id: '0:4', type: 'FRAME', children: [{ id: '0:5', type: 'TEXT', characters: 'B' }] },
+          ],
+        },
+      ],
+    };
+    expect(extractTextNodes(node)).toEqual({
+      '0:3': { text: 'A' },
+      '0:5': { text: 'B' },
+    });
+  });
+
+  it('handles missing characters field as empty string', () => {
+    const node = { id: '0:1', type: 'TEXT' };
+    expect(extractTextNodes(node)).toEqual({ '0:1': { text: '' } });
+  });
+
+  it('handles null / undefined gracefully', () => {
+    expect(extractTextNodes(null)).toEqual({});
+    expect(extractTextNodes(undefined)).toEqual({});
+  });
+});
+
+describe('extractTextSnapshot', () => {
+  const tree = {
+    id: '0:0', type: 'DOCUMENT',
+    children: [
+      {
+        id: '0:1', type: 'CANVAS',
+        children: [{ id: '0:2', type: 'TEXT', characters: 'JP' }],
+      },
+      {
+        id: '6:6', type: 'CANVAS',
+        children: [{ id: '6:7', type: 'TEXT', characters: 'ZH' }],
+      },
+      {
+        id: '6:410', type: 'CANVAS',
+        children: [], // 空
+      },
+    ],
+  };
+
+  it('produces snapshot keyed by registered frame id', () => {
+    const snap = extractTextSnapshot(tree, ['0:1', '6:6', '6:410']);
+    expect(snap).toEqual({
+      '0:1': { '0:2': { text: 'JP' } },
+      '6:6': { '6:7': { text: 'ZH' } },
+      '6:410': {},
+    });
+  });
+
+  it('omits ids not found in tree', () => {
+    const snap = extractTextSnapshot(tree, ['0:1', 'nonexistent:999']);
+    expect(Object.keys(snap)).toEqual(['0:1']);
+  });
+
+  it('returns empty object for empty registered ids', () => {
+    expect(extractTextSnapshot(tree, [])).toEqual({});
+  });
+});
+
+describe('diffTextSnapshots', () => {
+  it('detects added text node', () => {
+    const prev = { '0:1': {} };
+    const curr = { '0:1': { '0:2': { text: 'Hello' } } };
+    expect(diffTextSnapshots(prev, curr)).toEqual([
+      { frameId: '0:1', textLayerId: '0:2', before: null, after: 'Hello', action: 'added' },
+    ]);
+  });
+
+  it('detects modified text node', () => {
+    const prev = { '0:1': { '0:2': { text: 'Old' } } };
+    const curr = { '0:1': { '0:2': { text: 'New' } } };
+    expect(diffTextSnapshots(prev, curr)).toEqual([
+      { frameId: '0:1', textLayerId: '0:2', before: 'Old', after: 'New', action: 'modified' },
+    ]);
+  });
+
+  it('detects removed text node', () => {
+    const prev = { '0:1': { '0:2': { text: 'Bye' } } };
+    const curr = { '0:1': {} };
+    expect(diffTextSnapshots(prev, curr)).toEqual([
+      { frameId: '0:1', textLayerId: '0:2', before: 'Bye', after: null, action: 'removed' },
+    ]);
+  });
+
+  it('handles null prev as all added', () => {
+    const curr = { '0:1': { '0:2': { text: 'X' } } };
+    expect(diffTextSnapshots(null, curr)).toEqual([
+      { frameId: '0:1', textLayerId: '0:2', before: null, after: 'X', action: 'added' },
+    ]);
+  });
+
+  it('returns empty array when no changes', () => {
+    const snap = { '0:1': { '0:2': { text: 'Same' } } };
+    expect(diffTextSnapshots(snap, snap)).toEqual([]);
+  });
+
+  it('handles multiple frames + multiple changes', () => {
+    const prev = { '0:1': { '0:2': { text: 'A' } }, '6:6': {} };
+    const curr = { '0:1': { '0:2': { text: 'B' } }, '6:6': { '6:7': { text: 'C' } } };
+    const result = diffTextSnapshots(prev, curr);
+    expect(result).toHaveLength(2);
+    expect(result).toContainEqual({ frameId: '0:1', textLayerId: '0:2', before: 'A', after: 'B', action: 'modified' });
+    expect(result).toContainEqual({ frameId: '6:6', textLayerId: '6:7', before: null, after: 'C', action: 'added' });
+  });
+});
+
+describe('StateSchema v2', () => {
+  const baseState = {
+    checkedAt: '2026-08-17T00:00:00Z',
+    workflowRunId: null,
+    fileKey: 'x',
+    figmaVersion: 'v1',
+    figmaLastModified: '2026-08-17T00:00:00Z',
+    treeHash: 'sha256:' + 'a'.repeat(64),
+    metaHash: 'sha256:' + 'b'.repeat(64),
+    perFrameHash: {},
+    changedSinceLastRun: [],
+    added: [],
+    removed: [],
+    metaChanged: false,
+  };
+
+  it('accepts v1 state without textSnapshot/changedTexts (backward compat)', () => {
+    expect(() => StateSchema.parse(baseState)).not.toThrow();
+  });
+
+  it('accepts v2 state with textSnapshot + changedTexts', () => {
+    const v2 = {
+      ...baseState,
+      schemaVersion: 2,
+      textSnapshot: { '0:1': { '0:2': { text: 'Hi' } } },
+      changedTexts: [{ frameId: '0:1', textLayerId: '0:2', before: null, after: 'Hi', action: 'added' }],
+    };
+    expect(() => StateSchema.parse(v2)).not.toThrow();
+  });
+
+  it('rejects invalid changedTexts action value', () => {
+    const invalid = {
+      ...baseState,
+      changedTexts: [{ frameId: '0:1', textLayerId: '0:2', before: null, after: 'X', action: 'weird' }],
+    };
+    expect(() => StateSchema.parse(invalid)).toThrow();
   });
 });
 
@@ -360,5 +530,161 @@ describe('runCheck integration', () => {
     });
     const diff = await runCheck({ configPath, outPath, prevStatePath: outPath });
     expect(diff).toEqual({ changed: [], added: [], removed: [], metaChanged: false });
+  });
+});
+
+describe('ConfigSchema v2 (langMap)', () => {
+  const baseConfig = {
+    fileKey: 'x',
+    frames: ['0:1', '6:6'],
+    lastSyncedVersion: null,
+  };
+
+  it('accepts config without langMap (backward compat)', () => {
+    expect(() => ConfigSchema.parse(baseConfig)).not.toThrow();
+  });
+
+  it('accepts config with langMap', () => {
+    const withMap = { ...baseConfig, langMap: { '0:1': 'ja', '6:6': 'zh' } };
+    expect(() => ConfigSchema.parse(withMap)).not.toThrow();
+  });
+
+  it('rejects non-string lang code', () => {
+    const invalid = { ...baseConfig, langMap: { '0:1': 123 } };
+    expect(() => ConfigSchema.parse(invalid)).toThrow();
+  });
+});
+
+describe('runCheck v2 integration', () => {
+  const testTmpDir = join(tmpdir(), 'figma-check-v2-test');
+
+  beforeEach(async () => {
+    await mkdir(testTmpDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(testTmpDir, { recursive: true, force: true });
+    delete process.env.FIGMA_TOKEN;
+  });
+
+  it('writes textSnapshot and changedTexts on second run', async () => {
+    process.env.FIGMA_TOKEN = 'test-token';
+
+    // First tree: 1 text
+    const tree1 = {
+      name: 'Sudoku', lastModified: '2026-08-17T00:00:00Z', version: 'v1',
+      styles: {}, components: {}, componentSets: {},
+      document: {
+        id: '0:0', type: 'DOCUMENT',
+        children: [
+          {
+            id: '0:1', type: 'CANVAS',
+            children: [{ id: '103:4', type: 'TEXT', characters: '新しいゲーム' }],
+          },
+        ],
+      },
+    };
+    // Second tree: same node id, changed text
+    const tree2 = {
+      ...tree1, version: 'v2',
+      document: {
+        ...tree1.document,
+        children: [
+          {
+            id: '0:1', type: 'CANVAS',
+            children: [{ id: '103:4', type: 'TEXT', characters: '新しいゲーム123' }],
+          },
+        ],
+      },
+    };
+
+    const configPath = join(testTmpDir, 'config.json');
+    const prevPath = join(testTmpDir, 'prev.json');
+    const outPath = join(testTmpDir, 'out.json');
+    await writeFile(configPath, JSON.stringify({ fileKey: 'k', frames: ['0:1'], lastSyncedVersion: null }));
+
+    let callCount = 0;
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async (url) => {
+      callCount++;
+      const tree = callCount <= 2 ? tree1 : tree2;
+      return { ok: true, status: 200, json: async () => tree, text: async () => '', headers: new Map() };
+    });
+
+    // Run 1: baseline (no prev)
+    await runCheck({ configPath, outPath: prevPath, prevStatePath: null });
+    const state1 = JSON.parse(await readFile(prevPath, 'utf8'));
+    expect(state1.textSnapshot).toEqual({ '0:1': { '103:4': { text: '新しいゲーム' } } });
+    expect(state1.changedTexts).toEqual([]); // baseline: no prev → no diff
+
+    // Run 2: with prev state, changed text
+    await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    const state2 = JSON.parse(await readFile(outPath, 'utf8'));
+    expect(state2.textSnapshot).toEqual({ '0:1': { '103:4': { text: '新しいゲーム123' } } });
+    expect(state2.changedTexts).toEqual([
+      { frameId: '0:1', textLayerId: '103:4', before: '新しいゲーム', after: '新しいゲーム123', action: 'modified' },
+    ]);
+    expect(state2.schemaVersion).toBe(2);
+
+    globalThis.fetch = origFetch;
+  });
+
+  it('treats v1→v2 transition (prev has empty textSnapshot) as baseline', async () => {
+    process.env.FIGMA_TOKEN = 'test-token';
+
+    // v1-like prev state with empty textSnapshot (from early-exit path before fix)
+    // and different figmaVersion so full fetch triggers
+    const v1LikePrev = {
+      checkedAt: '2026-08-17T00:00:00Z',
+      workflowRunId: null,
+      fileKey: 'k',
+      figmaVersion: 'old-version',
+      figmaLastModified: '2026-08-01T00:00:00Z',
+      treeHash: 'sha256:' + 'a'.repeat(64),
+      metaHash: 'sha256:' + 'b'.repeat(64),
+      perFrameHash: {},
+      changedSinceLastRun: [],
+      added: [],
+      removed: [],
+      metaChanged: false,
+      schemaVersion: 2,
+      textSnapshot: {}, // ← v1→v2 transition の状態
+      changedTexts: [],
+    };
+
+    const tree = {
+      name: 'Sudoku', lastModified: '2026-08-17T00:00:00Z', version: 'new-version',
+      styles: {}, components: {}, componentSets: {},
+      document: {
+        id: '0:0', type: 'DOCUMENT',
+        children: [
+          {
+            id: '0:1', type: 'CANVAS',
+            children: [{ id: '103:4', type: 'TEXT', characters: 'Hello' }],
+          },
+        ],
+      },
+    };
+
+    const configPath = join(testTmpDir, 'config-v12.json');
+    const prevPath = join(testTmpDir, 'prev-v12.json');
+    const outPath = join(testTmpDir, 'out-v12.json');
+    await writeFile(configPath, JSON.stringify({ fileKey: 'k', frames: ['0:1'], lastSyncedVersion: null }));
+    await writeFile(prevPath, JSON.stringify(v1LikePrev));
+
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true, status: 200, json: async () => tree, text: async () => '', headers: new Map(),
+    }));
+
+    await runCheck({ configPath, outPath, prevStatePath: prevPath });
+    const state = JSON.parse(await readFile(outPath, 'utf8'));
+
+    // textSnapshot は今回の fetch で正しく populated
+    expect(state.textSnapshot).toEqual({ '0:1': { '103:4': { text: 'Hello' } } });
+    // baseline なので changedTexts は空（"全 text as added" 事故防止）
+    expect(state.changedTexts).toEqual([]);
+
+    globalThis.fetch = origFetch;
   });
 });
