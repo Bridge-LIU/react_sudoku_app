@@ -1,4 +1,5 @@
 {
+  "home": { "title": "New Game" },
   "difficulty": { "title": "Choose Difficulty", "label": "Difficulty", "easy": "Easy", "medium": "Medium", "hard": "Hard" },
   "game": {
     "timer": "Time",

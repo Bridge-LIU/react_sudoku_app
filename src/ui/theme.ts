@@ -35,6 +35,7 @@ export const colors = {
   mint: '#A7F0BA',
   peach: '#FFD6A5',
   coral: '#FFADAD',
+  hardBtn: '#FF3B30',         // Figma 更新（2026-08-17）: 上級 button を彩度上げ
   // ボタン内文字
   textOnPrimary: '#FFFFFF',
   textOnDark: '#FFFFFF',

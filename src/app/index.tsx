@@ -3,18 +3,23 @@
 
 import React from 'react';
 import { useRouter } from 'expo-router';
-import { View, StyleSheet, Platform, StatusBar } from 'react-native';
+import { View, StyleSheet, Platform, StatusBar, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { DifficultyPicker } from '@/ui/DifficultyPicker';
 import { LanguageSwitch } from '@/ui/LanguageSwitch';
-import { colors, spacing } from '@/ui/theme';
+import { colors, spacing, typography } from '@/ui/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <View style={styles.container}>
       {/* 右上角の言語切替。position absolute で他レイアウトに影響させない。 */}
       <View style={styles.langSwitchWrap}>
         <LanguageSwitch />
+      </View>
+      <View style={styles.titleWrap}>
+        <Text style={typography.h2}>{t('home.title')}</Text>
       </View>
       <DifficultyPicker onPick={d => router.push(`/play/${d}`)} />
     </View>
@@ -31,5 +36,9 @@ const styles = StyleSheet.create({
     top: spacing.md + statusBarInset,
     right: spacing.md,
     zIndex: 10,
+  },
+  titleWrap: {
+    alignItems: 'center',
+    paddingTop: spacing.xl * 3,
   },
 });
