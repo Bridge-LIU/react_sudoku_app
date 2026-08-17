@@ -1,17 +1,21 @@
 {
-  "checkedAt": "2026-08-17T08:36:01.914Z",
-  "workflowRunId": 32011101275,
+  "checkedAt": "2026-08-17T09:32:50.017Z",
+  "workflowRunId": 32015737654,
   "fileKey": "cwmewA4MTWktw6E7uhQFK2",
-  "figmaVersion": "2388601338743275440",
-  "figmaLastModified": "2026-08-17T08:33:46Z",
-  "treeHash": "sha256:d9184dd27be1833ac7d0ac0796da5078f8b75946daaa4e66a9d77470d661b7dc",
+  "figmaVersion": "2388625850639608058",
+  "figmaLastModified": "2026-08-17T09:17:23Z",
+  "treeHash": "sha256:401eacd3a4a617162752e842af3fd696558016ec0b83a25afa0c66d4d99d865d",
   "metaHash": "sha256:52f318f3ec699658e94a607f3a41de673b3347b55ae0d44ba1561a6e7be9c332",
   "perFrameHash": {
-    "0:1": "sha256:e01ca8c36595ac37e71b1eaadf5ec99d22e03fd537164cdbe57dd28530da5f30",
-    "6:6": "sha256:f072393fd43b770f0584fe840098c2a2a05b61141635377940380cacc511fbae",
-    "6:410": "sha256:426380fd5e9ebfe101941b36a8f8c6f72aef3d9f9cad7a313b57f776e6947f02"
+    "0:1": "sha256:a84302ef4d8b101214e52a74f17ca8f9e0eeae2dcd5956dfd5dd63baf61fbe06",
+    "6:6": "sha256:1220d55f7a300caeeb6aaf3ba8770def4fd0ae78d29c8afb14e23a7cb5d26907",
+    "6:410": "sha256:1b88f8b2f771600fd4906f16298184ed187387dc870b80d7161f7c025ab4a2b7"
   },
-  "changedSinceLastRun": [],
+  "changedSinceLastRun": [
+    "0:1",
+    "6:410",
+    "6:6"
+  ],
   "added": [],
   "removed": [],
   "metaChanged": false,
@@ -664,13 +668,13 @@
         "text": "リセット"
       },
       "12:3989": {
-        "text": "本当にリセットしますか？自動更新テスト 1112"
-      },
-      "12:4002": {
-        "text": "OK"
+        "text": "本当にリセットしますか？自動更新テスト"
       },
       "12:3999": {
         "text": "キャンセル"
+      },
+      "12:4002": {
+        "text": "OK"
       },
       "18:10": {
         "text": "難易度"
@@ -885,20 +889,11 @@
       "18:393": {
         "text": "リセット"
       },
-      "108:59": {
-        "text": "メモ"
-      },
-      "108:56": {
-        "text": "難易度を選択1"
-      },
-      "110:60": {
-        "text": "新しいゲーム v78979"
-      },
-      "108:55": {
-        "text": "難易度を選択2"
+      "103:4": {
+        "text": "新しいゲーム"
       },
       "6:11": {
-        "text": "難易度を選択3"
+        "text": "難易度を選択"
       },
       "6:15": {
         "text": "初級"
@@ -926,6 +921,336 @@
       }
     },
     "6:6": {
+      "11:2383": {
+        "text": "难度"
+      },
+      "11:2385": {
+        "text": "中级"
+      },
+      "11:2388": {
+        "text": "已用时"
+      },
+      "11:2390": {
+        "text": "15:34"
+      },
+      "11:2393": {
+        "text": "错误"
+      },
+      "11:2395": {
+        "text": "0"
+      },
+      "11:2398": {
+        "text": "提示"
+      },
+      "11:2400": {
+        "text": "50"
+      },
+      "11:2406": {
+        "text": "7"
+      },
+      "11:2410": {
+        "text": "6"
+      },
+      "11:2414": {
+        "text": "4"
+      },
+      "11:2418": {
+        "text": "1"
+      },
+      "11:2422": {
+        "text": "3"
+      },
+      "11:2426": {
+        "text": "9"
+      },
+      "11:2430": {
+        "text": "2"
+      },
+      "11:2434": {
+        "text": "5"
+      },
+      "11:2438": {
+        "text": "8"
+      },
+      "11:2443": {
+        "text": "1"
+      },
+      "11:2447": {
+        "text": "5"
+      },
+      "11:2451": {
+        "text": "3"
+      },
+      "11:2455": {
+        "text": "2"
+      },
+      "11:2459": {
+        "text": "8"
+      },
+      "11:2463": {
+        "text": "6"
+      },
+      "11:2467": {
+        "text": "9"
+      },
+      "11:2471": {
+        "text": "4"
+      },
+      "11:2475": {
+        "text": "7"
+      },
+      "11:2480": {
+        "text": "8"
+      },
+      "11:2484": {
+        "text": "2"
+      },
+      "11:2488": {
+        "text": "9"
+      },
+      "11:2492": {
+        "text": "7"
+      },
+      "11:2496": {
+        "text": "5"
+      },
+      "11:2500": {
+        "text": "4"
+      },
+      "11:2504": {
+        "text": "6"
+      },
+      "11:2508": {
+        "text": "1"
+      },
+      "11:2512": {
+        "text": "3"
+      },
+      "11:2517": {
+        "text": "3"
+      },
+      "11:2521": {
+        "text": "1"
+      },
+      "11:2525": {
+        "text": "6"
+      },
+      "11:2529": {
+        "text": "4"
+      },
+      "11:2533": {
+        "text": "2"
+      },
+      "11:2537": {
+        "text": "5"
+      },
+      "11:2541": {
+        "text": "8"
+      },
+      "11:2545": {
+        "text": "7"
+      },
+      "11:2549": {
+        "text": "9"
+      },
+      "11:2554": {
+        "text": "5"
+      },
+      "11:2558": {
+        "text": "8"
+      },
+      "11:2562": {
+        "text": "7"
+      },
+      "11:2566": {
+        "text": "9"
+      },
+      "11:2570": {
+        "text": "1"
+      },
+      "11:2574": {
+        "text": "3"
+      },
+      "11:2578": {
+        "text": "4"
+      },
+      "11:2582": {
+        "text": "6"
+      },
+      "11:2586": {
+        "text": "2"
+      },
+      "11:2591": {
+        "text": "9"
+      },
+      "11:2595": {
+        "text": "4"
+      },
+      "11:2599": {
+        "text": "2"
+      },
+      "11:2603": {
+        "text": "8"
+      },
+      "11:2607": {
+        "text": "6"
+      },
+      "11:2611": {
+        "text": "7"
+      },
+      "11:2615": {
+        "text": "5"
+      },
+      "11:2619": {
+        "text": "3"
+      },
+      "11:2623": {
+        "text": "1"
+      },
+      "11:2628": {
+        "text": "2"
+      },
+      "11:2632": {
+        "text": "7"
+      },
+      "11:2636": {
+        "text": "1"
+      },
+      "11:2640": {
+        "text": "6"
+      },
+      "11:2644": {
+        "text": "4"
+      },
+      "11:2648": {
+        "text": "8"
+      },
+      "11:2652": {
+        "text": "3"
+      },
+      "11:2656": {
+        "text": "9"
+      },
+      "11:2660": {
+        "text": "5"
+      },
+      "11:2665": {
+        "text": "4"
+      },
+      "11:2669": {
+        "text": "9"
+      },
+      "11:2673": {
+        "text": "5"
+      },
+      "11:2677": {
+        "text": "3"
+      },
+      "11:2681": {
+        "text": "7"
+      },
+      "11:2685": {
+        "text": "2"
+      },
+      "11:2689": {
+        "text": "1"
+      },
+      "11:2693": {
+        "text": "8"
+      },
+      "11:2697": {
+        "text": "6"
+      },
+      "11:2702": {
+        "text": "6"
+      },
+      "11:2706": {
+        "text": "3"
+      },
+      "11:2710": {
+        "text": "8"
+      },
+      "11:2714": {
+        "text": "5"
+      },
+      "11:2718": {
+        "text": "9"
+      },
+      "11:2722": {
+        "text": "1"
+      },
+      "11:2726": {
+        "text": "7"
+      },
+      "11:2730": {
+        "text": "2"
+      },
+      "11:2734": {
+        "text": "4"
+      },
+      "11:2739": {
+        "text": "1"
+      },
+      "11:2742": {
+        "text": "2"
+      },
+      "11:2745": {
+        "text": "3"
+      },
+      "11:2748": {
+        "text": "4"
+      },
+      "11:2751": {
+        "text": "5"
+      },
+      "11:2754": {
+        "text": "6"
+      },
+      "11:2757": {
+        "text": "7"
+      },
+      "11:2760": {
+        "text": "8"
+      },
+      "11:2763": {
+        "text": "9"
+      },
+      "11:2767": {
+        "text": "删除"
+      },
+      "11:2770": {
+        "text": "备注"
+      },
+      "11:2774": {
+        "text": "撤销"
+      },
+      "11:2777": {
+        "text": "重做"
+      },
+      "11:2780": {
+        "text": "提示"
+      },
+      "11:2783": {
+        "text": "重置"
+      },
+      "11:2788": {
+        "text": "🎉"
+      },
+      "11:2790": {
+        "text": "完成！"
+      },
+      "11:2793": {
+        "text": "难度：中级 / 用时：15:34 / 错误：0 / 提示：50"
+      },
+      "11:2798": {
+        "text": "再玩一次"
+      },
+      "11:2801": {
+        "text": "更换难度"
+      },
+      "11:2804": {
+        "text": "关闭"
+      },
       "13:770": {
         "text": "难度"
       },
@@ -1463,6 +1788,12 @@
       "20:773": {
         "text": "重置"
       },
+      "103:7": {
+        "text": "多页更新测试"
+      },
+      "6:1515": {
+        "text": "选择难度"
+      },
       "6:1519": {
         "text": "初级"
       },
@@ -1472,9 +1803,6 @@
       "6:1525": {
         "text": "高级"
       },
-      "6:1515": {
-        "text": "选择难度"
-      },
       "6:1533": {
         "text": "JA"
       },
@@ -1482,15 +1810,6 @@
         "text": "ZH"
       },
       "6:1536": {
-        "text": "EN"
-      },
-      "110:65": {
-        "text": "JA"
-      },
-      "110:68": {
-        "text": "ZH"
-      },
-      "110:71": {
         "text": "EN"
       }
     },
@@ -2362,8 +2681,8 @@
       "20:1517": {
         "text": "Reset"
       },
-      "107:52": {
-        "text": "Undo"
+      "6:415": {
+        "text": "Choose Difficulty"
       },
       "6:419": {
         "text": "Easy"
@@ -2374,9 +2693,6 @@
       "6:425": {
         "text": "Hard"
       },
-      "6:415": {
-        "text": "Choose Difficulty"
-      },
       "6:430": {
         "text": "JA"
       },
@@ -2385,1907 +2701,1633 @@
       },
       "6:436": {
         "text": "EN"
-      },
-      "123:8": {
-        "text": "难度"
-      },
-      "123:10": {
-        "text": "中级"
-      },
-      "123:13": {
-        "text": "已用时"
-      },
-      "123:15": {
-        "text": "15:34"
-      },
-      "123:18": {
-        "text": "错误"
-      },
-      "123:20": {
-        "text": "0"
-      },
-      "123:23": {
-        "text": "提示"
-      },
-      "123:25": {
-        "text": "50"
-      },
-      "123:31": {
-        "text": "7"
-      },
-      "123:35": {
-        "text": "6"
-      },
-      "123:39": {
-        "text": "4"
-      },
-      "123:43": {
-        "text": "1"
-      },
-      "123:47": {
-        "text": "3"
-      },
-      "123:51": {
-        "text": "9"
-      },
-      "123:55": {
-        "text": "2"
-      },
-      "123:59": {
-        "text": "5"
-      },
-      "123:63": {
-        "text": "8"
-      },
-      "123:68": {
-        "text": "1"
-      },
-      "123:72": {
-        "text": "5"
-      },
-      "123:76": {
-        "text": "3"
-      },
-      "123:80": {
-        "text": "2"
-      },
-      "123:84": {
-        "text": "8"
-      },
-      "123:88": {
-        "text": "6"
-      },
-      "123:92": {
-        "text": "9"
-      },
-      "123:96": {
-        "text": "4"
-      },
-      "123:100": {
-        "text": "7"
-      },
-      "123:105": {
-        "text": "8"
-      },
-      "123:109": {
-        "text": "2"
-      },
-      "123:113": {
-        "text": "9"
-      },
-      "123:117": {
-        "text": "7"
-      },
-      "123:121": {
-        "text": "5"
-      },
-      "123:125": {
-        "text": "4"
-      },
-      "123:129": {
-        "text": "6"
-      },
-      "123:133": {
-        "text": "1"
-      },
-      "123:137": {
-        "text": "3"
-      },
-      "123:142": {
-        "text": "3"
-      },
-      "123:146": {
-        "text": "1"
-      },
-      "123:150": {
-        "text": "6"
-      },
-      "123:154": {
-        "text": "4"
-      },
-      "123:158": {
-        "text": "2"
-      },
-      "123:162": {
-        "text": "5"
-      },
-      "123:166": {
-        "text": "8"
-      },
-      "123:170": {
-        "text": "7"
-      },
-      "123:174": {
-        "text": "9"
-      },
-      "123:179": {
-        "text": "5"
-      },
-      "123:183": {
-        "text": "8"
-      },
-      "123:187": {
-        "text": "7"
-      },
-      "123:191": {
-        "text": "9"
-      },
-      "123:195": {
-        "text": "1"
-      },
-      "123:199": {
-        "text": "3"
-      },
-      "123:203": {
-        "text": "4"
-      },
-      "123:207": {
-        "text": "6"
-      },
-      "123:211": {
-        "text": "2"
-      },
-      "123:216": {
-        "text": "9"
-      },
-      "123:220": {
-        "text": "4"
-      },
-      "123:224": {
-        "text": "2"
-      },
-      "123:228": {
-        "text": "8"
-      },
-      "123:232": {
-        "text": "6"
-      },
-      "123:236": {
-        "text": "7"
-      },
-      "123:240": {
-        "text": "5"
-      },
-      "123:244": {
-        "text": "3"
-      },
-      "123:248": {
-        "text": "1"
-      },
-      "123:253": {
-        "text": "2"
-      },
-      "123:257": {
-        "text": "7"
-      },
-      "123:261": {
-        "text": "1"
-      },
-      "123:265": {
-        "text": "6"
-      },
-      "123:269": {
-        "text": "4"
-      },
-      "123:273": {
-        "text": "8"
-      },
-      "123:277": {
-        "text": "3"
-      },
-      "123:281": {
-        "text": "9"
-      },
-      "123:285": {
-        "text": "5"
-      },
-      "123:290": {
-        "text": "4"
-      },
-      "123:294": {
-        "text": "9"
-      },
-      "123:298": {
-        "text": "5"
-      },
-      "123:302": {
-        "text": "3"
-      },
-      "123:306": {
-        "text": "7"
-      },
-      "123:310": {
-        "text": "2"
-      },
-      "123:314": {
-        "text": "1"
-      },
-      "123:318": {
-        "text": "8"
-      },
-      "123:322": {
-        "text": "6"
-      },
-      "123:327": {
-        "text": "6"
-      },
-      "123:331": {
-        "text": "3"
-      },
-      "123:335": {
-        "text": "8"
-      },
-      "123:339": {
-        "text": "5"
-      },
-      "123:343": {
-        "text": "9"
-      },
-      "123:347": {
-        "text": "1"
-      },
-      "123:351": {
-        "text": "7"
-      },
-      "123:355": {
-        "text": "2"
-      },
-      "123:359": {
-        "text": "4"
-      },
-      "123:364": {
-        "text": "1"
-      },
-      "123:367": {
-        "text": "2"
-      },
-      "123:370": {
-        "text": "3"
-      },
-      "123:373": {
-        "text": "4"
-      },
-      "123:376": {
-        "text": "5"
-      },
-      "123:379": {
-        "text": "6"
-      },
-      "123:382": {
-        "text": "7"
-      },
-      "123:385": {
-        "text": "8"
-      },
-      "123:388": {
-        "text": "9"
-      },
-      "123:392": {
-        "text": "删除"
-      },
-      "123:395": {
-        "text": "备注"
-      },
-      "123:399": {
-        "text": "撤销"
-      },
-      "123:402": {
-        "text": "重做"
-      },
-      "123:405": {
-        "text": "提示"
-      },
-      "123:408": {
-        "text": "重置"
-      },
-      "123:413": {
-        "text": "🎉"
-      },
-      "123:415": {
-        "text": "完成！"
-      },
-      "123:418": {
-        "text": "难度：中级 / 用时：15:34 / 错误：0 / 提示：50"
-      },
-      "123:423": {
-        "text": "再玩一次"
-      },
-      "123:426": {
-        "text": "更换难度"
-      },
-      "123:429": {
-        "text": "关闭"
       }
     }
   },
   "changedTexts": [
     {
       "frameId": "0:1",
-      "textLayerId": "108:56",
-      "before": "難易度を選択",
-      "after": "難易度を選択1",
+      "textLayerId": "12:3989",
+      "before": "本当にリセットしますか？自動更新テスト 1112",
+      "after": "本当にリセットしますか？自動更新テスト",
       "action": "modified"
+    },
+    {
+      "frameId": "0:1",
+      "textLayerId": "108:59",
+      "before": "メモ",
+      "after": null,
+      "action": "removed"
+    },
+    {
+      "frameId": "0:1",
+      "textLayerId": "108:56",
+      "before": "難易度を選択1",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "0:1",
       "textLayerId": "110:60",
-      "before": "新しいゲーム v6",
-      "after": "新しいゲーム v78979",
-      "action": "modified"
+      "before": "新しいゲーム v78979",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "0:1",
       "textLayerId": "108:55",
-      "before": "難易度を選択",
-      "after": "難易度を選択2",
-      "action": "modified"
+      "before": "難易度を選択2",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "0:1",
       "textLayerId": "6:11",
-      "before": "難易度を選択",
-      "after": "難易度を選択3",
+      "before": "難易度を選択3",
+      "after": "難易度を選択",
       "action": "modified"
     },
     {
+      "frameId": "0:1",
+      "textLayerId": "103:4",
+      "before": null,
+      "after": "新しいゲーム",
+      "action": "added"
+    },
+    {
       "frameId": "6:6",
-      "textLayerId": "112:507",
-      "before": "难度",
+      "textLayerId": "110:65",
+      "before": "JA",
       "after": null,
       "action": "removed"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:509",
-      "before": "中级",
+      "textLayerId": "110:68",
+      "before": "ZH",
       "after": null,
       "action": "removed"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:512",
-      "before": "已用时",
+      "textLayerId": "110:71",
+      "before": "EN",
       "after": null,
       "action": "removed"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:514",
-      "before": "15:34",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2383",
+      "before": null,
+      "after": "难度",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:517",
-      "before": "错误",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2385",
+      "before": null,
+      "after": "中级",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:519",
-      "before": "0",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2388",
+      "before": null,
+      "after": "已用时",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:522",
-      "before": "提示",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2390",
+      "before": null,
+      "after": "15:34",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:524",
-      "before": "50",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2393",
+      "before": null,
+      "after": "错误",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:530",
-      "before": "7",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2395",
+      "before": null,
+      "after": "0",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:534",
-      "before": "6",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2398",
+      "before": null,
+      "after": "提示",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:538",
-      "before": "4",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2400",
+      "before": null,
+      "after": "50",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:542",
-      "before": "1",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2406",
+      "before": null,
+      "after": "7",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:546",
-      "before": "3",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2410",
+      "before": null,
+      "after": "6",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:550",
-      "before": "9",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2414",
+      "before": null,
+      "after": "4",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:554",
-      "before": "2",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2418",
+      "before": null,
+      "after": "1",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:558",
-      "before": "5",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2422",
+      "before": null,
+      "after": "3",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:562",
-      "before": "8",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2426",
+      "before": null,
+      "after": "9",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:567",
-      "before": "1",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2430",
+      "before": null,
+      "after": "2",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:571",
-      "before": "5",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2434",
+      "before": null,
+      "after": "5",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:575",
-      "before": "3",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2438",
+      "before": null,
+      "after": "8",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:579",
-      "before": "2",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2443",
+      "before": null,
+      "after": "1",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:583",
-      "before": "8",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2447",
+      "before": null,
+      "after": "5",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:587",
-      "before": "6",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2451",
+      "before": null,
+      "after": "3",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:591",
-      "before": "9",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2455",
+      "before": null,
+      "after": "2",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:595",
-      "before": "4",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2459",
+      "before": null,
+      "after": "8",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:599",
-      "before": "7",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2463",
+      "before": null,
+      "after": "6",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:604",
-      "before": "8",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2467",
+      "before": null,
+      "after": "9",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:608",
-      "before": "2",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2471",
+      "before": null,
+      "after": "4",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:612",
-      "before": "9",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2475",
+      "before": null,
+      "after": "7",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:616",
-      "before": "7",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2480",
+      "before": null,
+      "after": "8",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:620",
-      "before": "5",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2484",
+      "before": null,
+      "after": "2",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:624",
-      "before": "4",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2488",
+      "before": null,
+      "after": "9",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:628",
-      "before": "6",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2492",
+      "before": null,
+      "after": "7",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:632",
-      "before": "1",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2496",
+      "before": null,
+      "after": "5",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:636",
-      "before": "3",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2500",
+      "before": null,
+      "after": "4",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:641",
-      "before": "3",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2504",
+      "before": null,
+      "after": "6",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:645",
-      "before": "1",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2508",
+      "before": null,
+      "after": "1",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:649",
-      "before": "6",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2512",
+      "before": null,
+      "after": "3",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:653",
-      "before": "4",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2517",
+      "before": null,
+      "after": "3",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:657",
-      "before": "2",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2521",
+      "before": null,
+      "after": "1",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:661",
-      "before": "5",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2525",
+      "before": null,
+      "after": "6",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:665",
-      "before": "8",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2529",
+      "before": null,
+      "after": "4",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:669",
-      "before": "7",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2533",
+      "before": null,
+      "after": "2",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:673",
-      "before": "9",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2537",
+      "before": null,
+      "after": "5",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:678",
-      "before": "5",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2541",
+      "before": null,
+      "after": "8",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:682",
-      "before": "8",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2545",
+      "before": null,
+      "after": "7",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:686",
-      "before": "7",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2549",
+      "before": null,
+      "after": "9",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:690",
-      "before": "9",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2554",
+      "before": null,
+      "after": "5",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:694",
-      "before": "1",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2558",
+      "before": null,
+      "after": "8",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:698",
-      "before": "3",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2562",
+      "before": null,
+      "after": "7",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:702",
-      "before": "4",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2566",
+      "before": null,
+      "after": "9",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:706",
-      "before": "6",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2570",
+      "before": null,
+      "after": "1",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:710",
-      "before": "2",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2574",
+      "before": null,
+      "after": "3",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:715",
-      "before": "9",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2578",
+      "before": null,
+      "after": "4",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:719",
-      "before": "4",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2582",
+      "before": null,
+      "after": "6",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:723",
-      "before": "2",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2586",
+      "before": null,
+      "after": "2",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:727",
-      "before": "8",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2591",
+      "before": null,
+      "after": "9",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:731",
-      "before": "6",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2595",
+      "before": null,
+      "after": "4",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:735",
-      "before": "7",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2599",
+      "before": null,
+      "after": "2",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:739",
-      "before": "5",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2603",
+      "before": null,
+      "after": "8",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:743",
-      "before": "3",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2607",
+      "before": null,
+      "after": "6",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:747",
-      "before": "1",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2611",
+      "before": null,
+      "after": "7",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:752",
-      "before": "2",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2615",
+      "before": null,
+      "after": "5",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:756",
-      "before": "7",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2619",
+      "before": null,
+      "after": "3",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:760",
-      "before": "1",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2623",
+      "before": null,
+      "after": "1",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:764",
-      "before": "6",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2628",
+      "before": null,
+      "after": "2",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:768",
-      "before": "4",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2632",
+      "before": null,
+      "after": "7",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:772",
-      "before": "8",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2636",
+      "before": null,
+      "after": "1",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:776",
-      "before": "3",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2640",
+      "before": null,
+      "after": "6",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:780",
-      "before": "9",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2644",
+      "before": null,
+      "after": "4",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:784",
-      "before": "5",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2648",
+      "before": null,
+      "after": "8",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:789",
-      "before": "4",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2652",
+      "before": null,
+      "after": "3",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:793",
-      "before": "9",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2656",
+      "before": null,
+      "after": "9",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:797",
-      "before": "5",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2660",
+      "before": null,
+      "after": "5",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:801",
-      "before": "3",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2665",
+      "before": null,
+      "after": "4",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:805",
-      "before": "7",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2669",
+      "before": null,
+      "after": "9",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:809",
-      "before": "2",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2673",
+      "before": null,
+      "after": "5",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:813",
-      "before": "1",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2677",
+      "before": null,
+      "after": "3",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:817",
-      "before": "8",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2681",
+      "before": null,
+      "after": "7",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:821",
-      "before": "6",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2685",
+      "before": null,
+      "after": "2",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:826",
-      "before": "6",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2689",
+      "before": null,
+      "after": "1",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:830",
-      "before": "3",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2693",
+      "before": null,
+      "after": "8",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:834",
-      "before": "8",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2697",
+      "before": null,
+      "after": "6",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:838",
-      "before": "5",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2702",
+      "before": null,
+      "after": "6",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:842",
-      "before": "9",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2706",
+      "before": null,
+      "after": "3",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:846",
-      "before": "1",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2710",
+      "before": null,
+      "after": "8",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:850",
-      "before": "7",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2714",
+      "before": null,
+      "after": "5",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:854",
-      "before": "2",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2718",
+      "before": null,
+      "after": "9",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:858",
-      "before": "4",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2722",
+      "before": null,
+      "after": "1",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:863",
-      "before": "1",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2726",
+      "before": null,
+      "after": "7",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:866",
-      "before": "2",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2730",
+      "before": null,
+      "after": "2",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:869",
-      "before": "3",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2734",
+      "before": null,
+      "after": "4",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:872",
-      "before": "4",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2739",
+      "before": null,
+      "after": "1",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:875",
-      "before": "5",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2742",
+      "before": null,
+      "after": "2",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:878",
-      "before": "6",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2745",
+      "before": null,
+      "after": "3",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:881",
-      "before": "7",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2748",
+      "before": null,
+      "after": "4",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:884",
-      "before": "8",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2751",
+      "before": null,
+      "after": "5",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:887",
-      "before": "9",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2754",
+      "before": null,
+      "after": "6",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:891",
-      "before": "删除",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2757",
+      "before": null,
+      "after": "7",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:894",
-      "before": "备注",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2760",
+      "before": null,
+      "after": "8",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:898",
-      "before": "撤销",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2763",
+      "before": null,
+      "after": "9",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:901",
-      "before": "重做",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2767",
+      "before": null,
+      "after": "删除",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:904",
-      "before": "提示",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2770",
+      "before": null,
+      "after": "备注",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:907",
-      "before": "重置",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2774",
+      "before": null,
+      "after": "撤销",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:912",
-      "before": "🎉",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2777",
+      "before": null,
+      "after": "重做",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:914",
-      "before": "完成！",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2780",
+      "before": null,
+      "after": "提示",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:917",
-      "before": "难度：中级 / 用时：15:34 / 错误：0 / 提示：50",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2783",
+      "before": null,
+      "after": "重置",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:922",
-      "before": "再玩一次",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2788",
+      "before": null,
+      "after": "🎉",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:925",
-      "before": "更换难度",
-      "after": null,
-      "action": "removed"
+      "textLayerId": "11:2790",
+      "before": null,
+      "after": "完成！",
+      "action": "added"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "11:2793",
+      "before": null,
+      "after": "难度：中级 / 用时：15:34 / 错误：0 / 提示：50",
+      "action": "added"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "11:2798",
+      "before": null,
+      "after": "再玩一次",
+      "action": "added"
     },
     {
       "frameId": "6:6",
-      "textLayerId": "112:928",
-      "before": "关闭",
+      "textLayerId": "11:2801",
+      "before": null,
+      "after": "更换难度",
+      "action": "added"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "11:2804",
+      "before": null,
+      "after": "关闭",
+      "action": "added"
+    },
+    {
+      "frameId": "6:6",
+      "textLayerId": "103:7",
+      "before": null,
+      "after": "多页更新测试",
+      "action": "added"
+    },
+    {
+      "frameId": "6:410",
+      "textLayerId": "107:52",
+      "before": "Undo",
       "after": null,
       "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:8",
-      "before": null,
-      "after": "难度",
-      "action": "added"
+      "before": "难度",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:10",
-      "before": null,
-      "after": "中级",
-      "action": "added"
+      "before": "中级",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:13",
-      "before": null,
-      "after": "已用时",
-      "action": "added"
+      "before": "已用时",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:15",
-      "before": null,
-      "after": "15:34",
-      "action": "added"
+      "before": "15:34",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:18",
-      "before": null,
-      "after": "错误",
-      "action": "added"
+      "before": "错误",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:20",
-      "before": null,
-      "after": "0",
-      "action": "added"
+      "before": "0",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:23",
-      "before": null,
-      "after": "提示",
-      "action": "added"
+      "before": "提示",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:25",
-      "before": null,
-      "after": "50",
-      "action": "added"
+      "before": "50",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:31",
-      "before": null,
-      "after": "7",
-      "action": "added"
+      "before": "7",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:35",
-      "before": null,
-      "after": "6",
-      "action": "added"
+      "before": "6",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:39",
-      "before": null,
-      "after": "4",
-      "action": "added"
+      "before": "4",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:43",
-      "before": null,
-      "after": "1",
-      "action": "added"
+      "before": "1",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:47",
-      "before": null,
-      "after": "3",
-      "action": "added"
+      "before": "3",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:51",
-      "before": null,
-      "after": "9",
-      "action": "added"
+      "before": "9",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:55",
-      "before": null,
-      "after": "2",
-      "action": "added"
+      "before": "2",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:59",
-      "before": null,
-      "after": "5",
-      "action": "added"
+      "before": "5",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:63",
-      "before": null,
-      "after": "8",
-      "action": "added"
+      "before": "8",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:68",
-      "before": null,
-      "after": "1",
-      "action": "added"
+      "before": "1",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:72",
-      "before": null,
-      "after": "5",
-      "action": "added"
+      "before": "5",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:76",
-      "before": null,
-      "after": "3",
-      "action": "added"
+      "before": "3",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:80",
-      "before": null,
-      "after": "2",
-      "action": "added"
+      "before": "2",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:84",
-      "before": null,
-      "after": "8",
-      "action": "added"
+      "before": "8",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:88",
-      "before": null,
-      "after": "6",
-      "action": "added"
+      "before": "6",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:92",
-      "before": null,
-      "after": "9",
-      "action": "added"
+      "before": "9",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:96",
-      "before": null,
-      "after": "4",
-      "action": "added"
+      "before": "4",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:100",
-      "before": null,
-      "after": "7",
-      "action": "added"
+      "before": "7",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:105",
-      "before": null,
-      "after": "8",
-      "action": "added"
+      "before": "8",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:109",
-      "before": null,
-      "after": "2",
-      "action": "added"
+      "before": "2",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:113",
-      "before": null,
-      "after": "9",
-      "action": "added"
+      "before": "9",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:117",
-      "before": null,
-      "after": "7",
-      "action": "added"
+      "before": "7",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:121",
-      "before": null,
-      "after": "5",
-      "action": "added"
+      "before": "5",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:125",
-      "before": null,
-      "after": "4",
-      "action": "added"
+      "before": "4",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:129",
-      "before": null,
-      "after": "6",
-      "action": "added"
+      "before": "6",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:133",
-      "before": null,
-      "after": "1",
-      "action": "added"
+      "before": "1",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:137",
-      "before": null,
-      "after": "3",
-      "action": "added"
+      "before": "3",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:142",
-      "before": null,
-      "after": "3",
-      "action": "added"
+      "before": "3",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:146",
-      "before": null,
-      "after": "1",
-      "action": "added"
+      "before": "1",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:150",
-      "before": null,
-      "after": "6",
-      "action": "added"
+      "before": "6",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:154",
-      "before": null,
-      "after": "4",
-      "action": "added"
+      "before": "4",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:158",
-      "before": null,
-      "after": "2",
-      "action": "added"
+      "before": "2",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:162",
-      "before": null,
-      "after": "5",
-      "action": "added"
+      "before": "5",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:166",
-      "before": null,
-      "after": "8",
-      "action": "added"
+      "before": "8",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:170",
-      "before": null,
-      "after": "7",
-      "action": "added"
+      "before": "7",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:174",
-      "before": null,
-      "after": "9",
-      "action": "added"
+      "before": "9",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:179",
-      "before": null,
-      "after": "5",
-      "action": "added"
+      "before": "5",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:183",
-      "before": null,
-      "after": "8",
-      "action": "added"
+      "before": "8",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:187",
-      "before": null,
-      "after": "7",
-      "action": "added"
+      "before": "7",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:191",
-      "before": null,
-      "after": "9",
-      "action": "added"
+      "before": "9",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:195",
-      "before": null,
-      "after": "1",
-      "action": "added"
+      "before": "1",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:199",
-      "before": null,
-      "after": "3",
-      "action": "added"
+      "before": "3",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:203",
-      "before": null,
-      "after": "4",
-      "action": "added"
+      "before": "4",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:207",
-      "before": null,
-      "after": "6",
-      "action": "added"
+      "before": "6",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:211",
-      "before": null,
-      "after": "2",
-      "action": "added"
+      "before": "2",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:216",
-      "before": null,
-      "after": "9",
-      "action": "added"
+      "before": "9",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:220",
-      "before": null,
-      "after": "4",
-      "action": "added"
+      "before": "4",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:224",
-      "before": null,
-      "after": "2",
-      "action": "added"
+      "before": "2",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:228",
-      "before": null,
-      "after": "8",
-      "action": "added"
+      "before": "8",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:232",
-      "before": null,
-      "after": "6",
-      "action": "added"
+      "before": "6",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:236",
-      "before": null,
-      "after": "7",
-      "action": "added"
+      "before": "7",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:240",
-      "before": null,
-      "after": "5",
-      "action": "added"
+      "before": "5",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:244",
-      "before": null,
-      "after": "3",
-      "action": "added"
+      "before": "3",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:248",
-      "before": null,
-      "after": "1",
-      "action": "added"
+      "before": "1",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:253",
-      "before": null,
-      "after": "2",
-      "action": "added"
+      "before": "2",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:257",
-      "before": null,
-      "after": "7",
-      "action": "added"
+      "before": "7",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:261",
-      "before": null,
-      "after": "1",
-      "action": "added"
+      "before": "1",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:265",
-      "before": null,
-      "after": "6",
-      "action": "added"
+      "before": "6",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:269",
-      "before": null,
-      "after": "4",
-      "action": "added"
+      "before": "4",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:273",
-      "before": null,
-      "after": "8",
-      "action": "added"
+      "before": "8",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:277",
-      "before": null,
-      "after": "3",
-      "action": "added"
+      "before": "3",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:281",
-      "before": null,
-      "after": "9",
-      "action": "added"
+      "before": "9",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:285",
-      "before": null,
-      "after": "5",
-      "action": "added"
+      "before": "5",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:290",
-      "before": null,
-      "after": "4",
-      "action": "added"
+      "before": "4",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:294",
-      "before": null,
-      "after": "9",
-      "action": "added"
+      "before": "9",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:298",
-      "before": null,
-      "after": "5",
-      "action": "added"
+      "before": "5",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:302",
-      "before": null,
-      "after": "3",
-      "action": "added"
+      "before": "3",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:306",
-      "before": null,
-      "after": "7",
-      "action": "added"
+      "before": "7",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:310",
-      "before": null,
-      "after": "2",
-      "action": "added"
+      "before": "2",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:314",
-      "before": null,
-      "after": "1",
-      "action": "added"
+      "before": "1",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:318",
-      "before": null,
-      "after": "8",
-      "action": "added"
+      "before": "8",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:322",
-      "before": null,
-      "after": "6",
-      "action": "added"
+      "before": "6",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:327",
-      "before": null,
-      "after": "6",
-      "action": "added"
+      "before": "6",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:331",
-      "before": null,
-      "after": "3",
-      "action": "added"
+      "before": "3",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:335",
-      "before": null,
-      "after": "8",
-      "action": "added"
+      "before": "8",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:339",
-      "before": null,
-      "after": "5",
-      "action": "added"
+      "before": "5",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:343",
-      "before": null,
-      "after": "9",
-      "action": "added"
+      "before": "9",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:347",
-      "before": null,
-      "after": "1",
-      "action": "added"
+      "before": "1",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:351",
-      "before": null,
-      "after": "7",
-      "action": "added"
+      "before": "7",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:355",
-      "before": null,
-      "after": "2",
-      "action": "added"
+      "before": "2",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:359",
-      "before": null,
-      "after": "4",
-      "action": "added"
+      "before": "4",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:364",
-      "before": null,
-      "after": "1",
-      "action": "added"
+      "before": "1",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:367",
-      "before": null,
-      "after": "2",
-      "action": "added"
+      "before": "2",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:370",
-      "before": null,
-      "after": "3",
-      "action": "added"
+      "before": "3",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:373",
-      "before": null,
-      "after": "4",
-      "action": "added"
+      "before": "4",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:376",
-      "before": null,
-      "after": "5",
-      "action": "added"
+      "before": "5",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:379",
-      "before": null,
-      "after": "6",
-      "action": "added"
+      "before": "6",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:382",
-      "before": null,
-      "after": "7",
-      "action": "added"
+      "before": "7",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:385",
-      "before": null,
-      "after": "8",
-      "action": "added"
+      "before": "8",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:388",
-      "before": null,
-      "after": "9",
-      "action": "added"
+      "before": "9",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:392",
-      "before": null,
-      "after": "删除",
-      "action": "added"
+      "before": "删除",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:395",
-      "before": null,
-      "after": "备注",
-      "action": "added"
+      "before": "备注",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:399",
-      "before": null,
-      "after": "撤销",
-      "action": "added"
+      "before": "撤销",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:402",
-      "before": null,
-      "after": "重做",
-      "action": "added"
+      "before": "重做",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:405",
-      "before": null,
-      "after": "提示",
-      "action": "added"
+      "before": "提示",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:408",
-      "before": null,
-      "after": "重置",
-      "action": "added"
+      "before": "重置",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:413",
-      "before": null,
-      "after": "🎉",
-      "action": "added"
+      "before": "🎉",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:415",
-      "before": null,
-      "after": "完成！",
-      "action": "added"
+      "before": "完成！",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:418",
-      "before": null,
-      "after": "难度：中级 / 用时：15:34 / 错误：0 / 提示：50",
-      "action": "added"
+      "before": "难度：中级 / 用时：15:34 / 错误：0 / 提示：50",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:423",
-      "before": null,
-      "after": "再玩一次",
-      "action": "added"
+      "before": "再玩一次",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:426",
-      "before": null,
-      "after": "更换难度",
-      "action": "added"
+      "before": "更换难度",
+      "after": null,
+      "action": "removed"
     },
     {
       "frameId": "6:410",
       "textLayerId": "123:429",
-      "before": null,
-      "after": "关闭",
-      "action": "added"
+      "before": "关闭",
+      "after": null,
+      "action": "removed"
     }
   ]
 }
