@@ -1,17 +1,21 @@
 {
-  "checkedAt": "2026-08-17T06:21:21.424Z",
-  "workflowRunId": 32001275884,
+  "checkedAt": "2026-08-17T06:31:30.143Z",
+  "workflowRunId": 32001976365,
   "fileKey": "cwmewA4MTWktw6E7uhQFK2",
-  "figmaVersion": "2388537033937423489",
-  "figmaLastModified": "2026-08-17T05:06:23Z",
-  "treeHash": "sha256:2341636007751d1bcf735cbf054b200f37a0117c3c6e716ef14947c3ea851371",
+  "figmaVersion": "2388574692739804005",
+  "figmaLastModified": "2026-08-17T06:31:27Z",
+  "treeHash": "sha256:c16ea3d74b041a9670a7ac0b99d9c73ce3c5d57ffeb657056b367f9a562d3891",
   "metaHash": "sha256:52f318f3ec699658e94a607f3a41de673b3347b55ae0d44ba1561a6e7be9c332",
   "perFrameHash": {
-    "0:1": "sha256:841db5e141449bbbbc38ebe5fd27699c2337da7e15f621ccb0028346a1707c54",
-    "6:6": "sha256:df391b8bd628d0d7924f05ab6dcc04849e05a2393d2a53f6e8bf7033b607d5d6",
-    "6:410": "sha256:1c266696d39b99723f4bd1f9bcd7df7cc2377c51d19e8c3c08ec6e0d672202a2"
+    "0:1": "sha256:a166816d770f6e3abb2f3ae99f0e4a9cb0d0dea937b43d19ada5b83cba5b608e",
+    "6:6": "sha256:df31f6fd6ebfd8f9899adf72b0a8b05f621d566d8b6179740cea56b67c353598",
+    "6:410": "sha256:f78f15e2058f56a430d095ba92c3ab8718b14a357e48acb55b8242b2abed63fc"
   },
-  "changedSinceLastRun": [],
+  "changedSinceLastRun": [
+    "0:1",
+    "6:410",
+    "6:6"
+  ],
   "added": [],
   "removed": [],
   "metaChanged": false,
@@ -888,11 +892,11 @@
       "18:393": {
         "text": "リセット"
       },
-      "110:60": {
-        "text": "あ新しゲーム"
-      },
       "108:56": {
         "text": "難易度を選択"
+      },
+      "110:60": {
+        "text": "新しいゲーム！中"
       },
       "108:55": {
         "text": "難易度を選択"
@@ -1463,9 +1467,6 @@
       "20:773": {
         "text": "重置"
       },
-      "6:1515": {
-        "text": "选择难度"
-      },
       "6:1519": {
         "text": "初级"
       },
@@ -1474,6 +1475,9 @@
       },
       "6:1525": {
         "text": "高级"
+      },
+      "6:1515": {
+        "text": "选择难度"
       },
       "6:1533": {
         "text": "JA"
@@ -2695,9 +2699,6 @@
       "107:52": {
         "text": "Undo"
       },
-      "6:415": {
-        "text": "Choose Difficulty"
-      },
       "6:419": {
         "text": "Easy"
       },
@@ -2706,6 +2707,9 @@
       },
       "6:425": {
         "text": "Hard"
+      },
+      "6:415": {
+        "text": "Choose Difficulty"
       },
       "6:430": {
         "text": "JA"
@@ -2718,5 +2722,13 @@
       }
     }
   },
-  "changedTexts": []
+  "changedTexts": [
+    {
+      "frameId": "0:1",
+      "textLayerId": "110:60",
+      "before": "あ新しゲーム",
+      "after": "新しいゲーム！中",
+      "action": "modified"
+    }
+  ]
 }
