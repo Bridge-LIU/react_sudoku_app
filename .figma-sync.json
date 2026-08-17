@@ -1,12 +1,16 @@
 {
   "fileKey": "cwmewA4MTWktw6E7uhQFK2",
   "fileName": "Sudoku-UI",
-  "frames": ["0:1", "6:6", "6:410"],
+  "frames": [
+    "0:1",
+    "6:6",
+    "6:410"
+  ],
   "langMap": {
     "0:1": "ja",
     "6:6": "zh",
     "6:410": "en"
   },
   "assetsRoot": "figma_assets",
-  "lastSyncedVersion": "2388574692739804005"
+  "lastSyncedVersion": "2388584463272225712"
 }
