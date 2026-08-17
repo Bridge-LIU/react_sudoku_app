@@ -1,5 +1,5 @@
 {
-  "difficulty": { "title": "选择难度", "label": "难度 ", "easy": "初级", "medium": "中级", "hard": "高级" },
+  "difficulty": { "title": "難易度を選択", "label": "难度 ", "easy": "初级", "medium": "中級", "hard": "高级" },
   "game": {
     "timer": "已用时",
     "mistakes": "错误",
