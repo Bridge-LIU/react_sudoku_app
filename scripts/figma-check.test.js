@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { canonicalize, sha256, findNode, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema, runCheck } from './figma-check.js';
+import { canonicalize, sha256, findNode, extractTextNodes, computePerFrameHash, computeMetaHash, diffHashes, assertFigmaResponse, assertHashStability, assertDiffDisjoint, StateSchema, ConfigSchema, runCheck } from './figma-check.js';
 import { readFileSync } from 'node:fs';
 import { writeFile, readFile, mkdir, rm } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
@@ -62,6 +62,52 @@ describe('findNode', () => {
 
   it('returns null for missing id', () => {
     expect(findNode(v1.document, '999:999')).toBeNull();
+  });
+});
+
+describe('extractTextNodes', () => {
+  it('returns empty object for node with no TEXT children', () => {
+    const node = { id: '0:1', type: 'CANVAS', children: [{ id: '0:2', type: 'FRAME' }] };
+    expect(extractTextNodes(node)).toEqual({});
+  });
+
+  it('extracts TEXT node with characters field', () => {
+    const node = {
+      id: '0:1', type: 'CANVAS',
+      children: [{ id: '0:2', type: 'TEXT', characters: 'Hello' }],
+    };
+    expect(extractTextNodes(node)).toEqual({
+      '0:2': { text: 'Hello' },
+    });
+  });
+
+  it('extracts TEXT nodes at deeper nesting', () => {
+    const node = {
+      id: '0:1', type: 'CANVAS',
+      children: [
+        {
+          id: '0:2', type: 'FRAME',
+          children: [
+            { id: '0:3', type: 'TEXT', characters: 'A' },
+            { id: '0:4', type: 'FRAME', children: [{ id: '0:5', type: 'TEXT', characters: 'B' }] },
+          ],
+        },
+      ],
+    };
+    expect(extractTextNodes(node)).toEqual({
+      '0:3': { text: 'A' },
+      '0:5': { text: 'B' },
+    });
+  });
+
+  it('handles missing characters field as empty string', () => {
+    const node = { id: '0:1', type: 'TEXT' };
+    expect(extractTextNodes(node)).toEqual({ '0:1': { text: '' } });
+  });
+
+  it('handles null / undefined gracefully', () => {
+    expect(extractTextNodes(null)).toEqual({});
+    expect(extractTextNodes(undefined)).toEqual({});
   });
 });
 

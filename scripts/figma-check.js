@@ -23,6 +23,21 @@ export function findNode(tree, nodeId) {
   return null;
 }
 
+export function extractTextNodes(node) {
+  const result = {};
+  function walk(n) {
+    if (!n || typeof n !== 'object') return;
+    if (n.type === 'TEXT' && n.id) {
+      result[n.id] = { text: n.characters || '' };
+    }
+    for (const child of n.children || []) {
+      walk(child);
+    }
+  }
+  walk(node);
+  return result;
+}
+
 export function computePerFrameHash(tree, registeredIds) {
   const result = {};
   for (const id of registeredIds) {
