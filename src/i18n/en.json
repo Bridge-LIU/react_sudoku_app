@@ -1,5 +1,11 @@
 {
-  "difficulty": { "title": "Choose Difficulty", "label": "Difficulty", "easy": "Easy", "medium": "Medium", "hard": "Hard" },
+  "difficulty": {
+    "title": "Choose Difficulty",
+    "label": "Difficulty",
+    "easy": "Easy",
+    "medium": "Medium",
+    "hard": "Hard"
+  },
   "game": {
     "timer": "Time",
     "mistakes": "Mistakes",
@@ -11,8 +17,6 @@
     "hintButton": "Hint",
     "memoMode": "Note",
     "delete": "Delete",
-    "pause": "Pause",
-    "resume": "Resume",
     "complete": "Solved!",
     "completeStats": "Difficulty: {{difficulty}} / Time: {{time}} / Mistakes: {{mistakes}} / Hints: {{hints}}",
     "playAgain": "Play again",
@@ -20,18 +24,12 @@
     "close": "Close"
   },
   "hint": {
-    "weakPrompt": "Check the highlighted region",
     "invalidResponse": "Invalid AI response. Please try again.",
     "noHintAvailable": "No hint available. Please re-check the board.",
     "timeout": "AI response timeout",
     "network": "Network error",
     "retryHint": "The board changed. Please press Hint again.",
     "unknownError": "Failed to get hint"
-  },
-  "error": {
-    "network": "Network error",
-    "server": "Server error",
-    "unknown": "Unknown error"
   },
   "settings": {
     "title": "Settings",

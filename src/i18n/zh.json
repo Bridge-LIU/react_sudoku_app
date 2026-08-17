@@ -1,5 +1,11 @@
 {
-  "difficulty": { "title": "難易度を選択", "label": "难度 ", "easy": "初级", "medium": "中級", "hard": "高级" },
+  "difficulty": {
+    "title": "難易度を選択",
+    "label": "难度 ",
+    "easy": "初级",
+    "medium": "中級",
+    "hard": "高级"
+  },
   "game": {
     "timer": "已用时",
     "mistakes": "错误",
@@ -11,8 +17,6 @@
     "hintButton": "提示",
     "memoMode": "备注",
     "delete": "删除",
-    "pause": "暂停",
-    "resume": "继续",
     "complete": "完成！",
     "completeStats": "难度：{{difficulty}} / 用时：{{time}} / 错误：{{mistakes}} / 提示：{{hints}}",
     "playAgain": "再玩一次",
@@ -20,18 +24,12 @@
     "close": "关闭"
   },
   "hint": {
-    "weakPrompt": "请检查特定的宫格",
     "invalidResponse": "AI 回答无效，请重试。",
     "noHintAvailable": "无法给出提示，请重新检查盘面",
     "timeout": "AI响应超时",
     "network": "网络错误",
     "retryHint": "盘面已变化，请再次点击提示。",
     "unknownError": "获取提示失败"
-  },
-  "error": {
-    "network": "网络错误",
-    "server": "服务器错误",
-    "unknown": "未知错误"
   },
   "settings": {
     "title": "设置",
