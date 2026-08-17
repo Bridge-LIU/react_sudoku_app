@@ -1,17 +1,20 @@
 {
-  "checkedAt": "2026-08-16T23:12:32.531Z",
-  "workflowRunId": 31978456527,
+  "checkedAt": "2026-08-17T00:15:43.098Z",
+  "workflowRunId": 31981460373,
   "fileKey": "cwmewA4MTWktw6E7uhQFK2",
-  "figmaVersion": "2383785212063001486",
-  "figmaLastModified": "2026-08-04T08:35:26Z",
-  "treeHash": "sha256:ec79f29da238c3b8a5a5846b5c828335fcbfa5955d512a04410b18b66412a8d6",
+  "figmaVersion": "2388433448464376105",
+  "figmaLastModified": "2026-08-17T00:15:34Z",
+  "treeHash": "sha256:401eacd3a4a617162752e842af3fd696558016ec0b83a25afa0c66d4d99d865d",
   "metaHash": "sha256:52f318f3ec699658e94a607f3a41de673b3347b55ae0d44ba1561a6e7be9c332",
   "perFrameHash": {
-    "0:1": "sha256:f5941aa81d3b8792bcb12c6e9372417fdbf2bfe17c6772fa7b550e4da8cc7bbc",
-    "6:6": "sha256:04ecdfa0b1ac72684b152739cbb7d6a4ef3905b7f5c56616aacac9b75820baed",
+    "0:1": "sha256:a84302ef4d8b101214e52a74f17ca8f9e0eeae2dcd5956dfd5dd63baf61fbe06",
+    "6:6": "sha256:1220d55f7a300caeeb6aaf3ba8770def4fd0ae78d29c8afb14e23a7cb5d26907",
     "6:410": "sha256:1b88f8b2f771600fd4906f16298184ed187387dc870b80d7161f7c025ab4a2b7"
   },
-  "changedSinceLastRun": [],
+  "changedSinceLastRun": [
+    "0:1",
+    "6:6"
+  ],
   "added": [],
   "removed": [],
   "metaChanged": false
