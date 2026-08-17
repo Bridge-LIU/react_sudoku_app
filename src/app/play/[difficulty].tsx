@@ -12,7 +12,7 @@
 //   useLocalSearchParams = useRoute().params の Expo Router 版。
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, Platform, ActivityIndicator, Text } from 'react-native';
+import { View, StyleSheet, Platform, Pressable, ActivityIndicator, Text } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Board } from '@/ui/Board';
@@ -29,7 +29,8 @@ import { generatePuzzle as apiGeneratePuzzle } from '@/api/puzzles';
 import { requestHint as apiRequestHint } from '@/api/hints';
 import { HttpError, TimeoutError, SchemaError, NetworkError } from '@/api/errors';
 import { Board as BoardData, Difficulty, NonEmptyDigit, Notes } from '@/types/domain';
-import { colors, spacing } from '@/ui/theme';
+import { colors, spacing, typography, bento } from '@/ui/theme';
+import i18n from '@/i18n';
 
 // URL パラメータのバリデーション（外部入力の信用境界）
 function isValidDifficulty(v: string | undefined): v is Difficulty {
@@ -414,6 +415,24 @@ export default function PlayScreen() {
         onToggleMode={() => dispatch({ type: 'TOGGLE_MODE' })}
         disabled={state.status !== 'playing'}
       />
+      {/* Figma 一致性: JP デザインには NumberPad 内の toggle に加えて独立した「メモ」button が置かれている。
+          strict SoT 準拠で JP のみ表示。同じ TOGGLE_MODE を dispatch する冗長 button。 */}
+      {i18n.language === 'ja' && (
+        <Pressable
+          onPress={() => dispatch({ type: 'TOGGLE_MODE' })}
+          disabled={state.status !== 'playing'}
+          style={({ pressed }) => [
+            styles.memoBtn,
+            state.mode === 'memo' && styles.memoBtnActive,
+            state.status !== 'playing' && styles.memoBtnDisabled,
+            pressed && state.status === 'playing' && styles.memoBtnPressed,
+          ]}
+        >
+          <Text style={[typography.buttonSmall, { color: colors.ink }]}>
+            {t('game.memoMode')}
+          </Text>
+        </Pressable>
+      )}
       <Toolbar
         onUndo={() => dispatch({ type: 'UNDO' })}
         onRedo={() => dispatch({ type: 'REDO' })}
@@ -467,4 +486,23 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   hintRejectionText: { color: colors.textConflict, fontSize: 12 },
+  memoBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.peach,
+    borderWidth: bento.borderWidth,
+    borderColor: colors.ink,
+    borderRadius: bento.radius.md,
+    ...bento.offsetShadow,
+  },
+  memoBtnActive: { backgroundColor: colors.mint },
+  memoBtnDisabled: { opacity: 0.4 },
+  memoBtnPressed: {
+    transform: [{ translateX: 2 }, { translateY: 2 }],
+    shadowOpacity: 0,
+    elevation: 0,
+  },
 });
