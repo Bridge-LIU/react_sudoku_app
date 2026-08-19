@@ -11,8 +11,8 @@ describe('walk.js payload builder', () => {
     expect(payload).toContain('"6:6"');
     expect(payload).toContain('"name"');
     expect(payload).toContain('"fills"');
-    expect(payload).toContain('figma.root.version');
-    expect(payload).toContain('figma.getNodeById');
+    expect(payload).toContain('lastModified');
+    expect(payload).toContain('figma.getNodeByIdAsync');
   });
 
   it('produces valid JavaScript (parses without syntax error)', () => {
@@ -20,6 +20,6 @@ describe('walk.js payload builder', () => {
       pageIds: ['0:1'],
       diffProps: ['name'],
     });
-    expect(() => new Function(payload)).not.toThrow();
+    expect(() => new Function('return (async () => {' + payload + '})()')).not.toThrow();
   });
 });

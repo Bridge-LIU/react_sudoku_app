@@ -18,13 +18,12 @@ function walk(node) {
 
 const result = {};
 for (const pageId of TARGET_PAGE_IDS) {
-  const page = figma.getNodeById(pageId);
+  const page = await figma.getNodeByIdAsync(pageId);
   if (!page) throw new Error("Page " + pageId + " not found");
   result[pageId] = walk(page);
 }
 
 return JSON.stringify({
-  version: figma.root.version,
   lastModified: new Date().toISOString(),
   pages: result
 });
