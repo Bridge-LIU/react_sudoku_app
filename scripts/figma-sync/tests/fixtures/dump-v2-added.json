@@ -1,0 +1,25 @@
+{
+  "version": "1002",
+  "lastModified": "2026-08-19T10:10:00.000Z",
+  "pages": {
+    "0:1": {
+      "id": "0:1",
+      "name": "JP",
+      "type": "CANVAS",
+      "children": [
+        {
+          "id": "11-1896",
+          "name": "Home",
+          "type": "FRAME",
+          "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1 } }]
+        },
+        {
+          "id": "11-9999",
+          "name": "NewBanner",
+          "type": "FRAME",
+          "fills": [{ "type": "SOLID", "color": { "r": 0.5, "g": 0.5, "b": 0.5 } }]
+        }
+      ]
+    }
+  }
+}

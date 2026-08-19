@@ -1,0 +1,19 @@
+{
+  "version": "1001",
+  "lastModified": "2026-08-19T10:05:00.000Z",
+  "pages": {
+    "0:1": {
+      "id": "0:1",
+      "name": "JP",
+      "type": "CANVAS",
+      "children": [
+        {
+          "id": "11-1896",
+          "name": "Home",
+          "type": "FRAME",
+          "fills": [{ "type": "SOLID", "color": { "r": 0.9, "g": 0.9, "b": 0.9 } }]
+        }
+      ]
+    }
+  }
+}
