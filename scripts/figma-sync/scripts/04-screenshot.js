@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Usage: node 04-screenshot.js <run-dir>
-// Assumes dev server already running at config.devServer.url
+// Auto-spawns dev server (config.devServer.cmd) and tears it down on exit.
 // Component preview route: <devUrl>/__figma-sync-preview__/<component>
 // (this route needs to be added to react app in Task 12)
 
@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { loadConfig } from './lib/config-loader.js';
 import { diffImages } from './lib/screenshot.js';
+import { spawnDevServer, waitForPort, killDevServer } from './lib/dev-server.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -24,46 +25,59 @@ const shotDir = path.join(runDir, 'screenshots');
 fs.mkdirSync(shotDir, { recursive: true });
 
 const devUrl = config.devServer.url;
+const port = parseInt(new URL(devUrl).port, 10);
 const { width, height } = config.playwright.viewport;
 
-const browser = await chromium.launch();
+// Auto-spawn dev server so the user doesn't have to keep a terminal open
+console.log(`▶ Spawning dev server: ${config.devServer.cmd}`);
+const devProc = spawnDevServer(REPO_ROOT, config.devServer.cmd);
 try {
-  for (const cf of changed.changedFiles) {
-    const url = `${devUrl}/__figma-sync-preview__/${cf.component}`;
+  console.log(`▶ Waiting for port ${port}...`);
+  await waitForPort(port, '127.0.0.1', 60000);
+  console.log(`✔ Dev server ready`);
 
-    // AFTER shot (current file state)
-    const ctxA = await browser.newContext({ viewport: { width, height } });
-    const pageA = await ctxA.newPage();
-    await pageA.goto(url, { waitUntil: 'networkidle' });
-    const afterBuf = await pageA.screenshot({ fullPage: true });
-    fs.writeFileSync(path.join(shotDir, `${cf.component}_after.png`), afterBuf);
-    await ctxA.close();
+  const browser = await chromium.launch({ headless: true });
+  try {
+    for (const cf of changed.changedFiles) {
+      const url = `${devUrl}/__figma-sync-preview__/${cf.component}`;
 
-    // BEFORE shot: temporarily restore .bak, take shot, restore current
-    const abs = path.join(REPO_ROOT, cf.file);
-    const bak = abs + '.bak';
-    const currentContent = fs.readFileSync(abs, 'utf-8');
-    fs.copyFileSync(bak, abs);
-    await new Promise(r => setTimeout(r, 2000)); // Vite HMR
+      // AFTER shot (current file state)
+      const ctxA = await browser.newContext({ viewport: { width, height } });
+      const pageA = await ctxA.newPage();
+      await pageA.goto(url, { waitUntil: 'networkidle' });
+      const afterBuf = await pageA.screenshot({ fullPage: true });
+      fs.writeFileSync(path.join(shotDir, `${cf.component}_after.png`), afterBuf);
+      await ctxA.close();
 
-    const ctxB = await browser.newContext({ viewport: { width, height } });
-    const pageB = await ctxB.newPage();
-    await pageB.goto(url, { waitUntil: 'networkidle' });
-    const beforeBuf = await pageB.screenshot({ fullPage: true });
-    fs.writeFileSync(path.join(shotDir, `${cf.component}_before.png`), beforeBuf);
-    await ctxB.close();
+      // BEFORE shot: temporarily restore .bak, take shot, restore current
+      const abs = path.join(REPO_ROOT, cf.file);
+      const bak = abs + '.bak';
+      const currentContent = fs.readFileSync(abs, 'utf-8');
+      fs.copyFileSync(bak, abs);
+      await new Promise(r => setTimeout(r, 2000)); // Vite HMR
 
-    fs.writeFileSync(abs, currentContent);
-    await new Promise(r => setTimeout(r, 2000)); // Vite HMR
+      const ctxB = await browser.newContext({ viewport: { width, height } });
+      const pageB = await ctxB.newPage();
+      await pageB.goto(url, { waitUntil: 'networkidle' });
+      const beforeBuf = await pageB.screenshot({ fullPage: true });
+      fs.writeFileSync(path.join(shotDir, `${cf.component}_before.png`), beforeBuf);
+      await ctxB.close();
 
-    try {
-      const { diffPixels, diffPng } = diffImages(beforeBuf, afterBuf, config.pixelmatchThreshold);
-      fs.writeFileSync(path.join(shotDir, `${cf.component}_diff.png`), diffPng);
-      console.log(`${cf.component}: ${diffPixels} diff pixels`);
-    } catch (e) {
-      console.warn(`${cf.component}: diff failed (${e.message}) — サイズ違い可能性`);
+      fs.writeFileSync(abs, currentContent);
+      await new Promise(r => setTimeout(r, 2000)); // Vite HMR
+
+      try {
+        const { diffPixels, diffPng } = diffImages(beforeBuf, afterBuf, config.pixelmatchThreshold);
+        fs.writeFileSync(path.join(shotDir, `${cf.component}_diff.png`), diffPng);
+        console.log(`${cf.component}: ${diffPixels} diff pixels`);
+      } catch (e) {
+        console.warn(`${cf.component}: diff failed (${e.message}) — サイズ違い可能性`);
+      }
     }
+  } finally {
+    await browser.close();
   }
 } finally {
-  await browser.close();
+  console.log(`▶ Stopping dev server...`);
+  killDevServer(devProc);
 }
