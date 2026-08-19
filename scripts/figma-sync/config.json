@@ -1,0 +1,19 @@
+{
+  "figmaFileKey": "cwmewA4MTWktw6E7uhQFK2",
+  "pages": {
+    "JP": "0:1",
+    "ZH": "6:6",
+    "EN": "6:410"
+  },
+  "frames": [
+    { "nodeId": "11-1896", "file": "src/screens/Home.tsx", "component": "Home" },
+    { "nodeId": "18-6",    "file": "src/screens/Play.tsx", "component": "Play" },
+    { "nodeId": "12-3615", "file": "src/ui/ResetDialog.tsx", "component": "ResetDialog" }
+  ],
+  "diffProps": ["name", "fills", "strokes", "effects", "opacity", "characters", "style", "boundVariables"],
+  "devServer": { "cmd": "npm run dev", "url": "http://localhost:5173" },
+  "playwright": { "viewport": { "width": 1440, "height": 900 } },
+  "androidPolicy": "mark_skipped",
+  "pixelmatchThreshold": 0.1,
+  "githubRepo": "Bridge-LIU/react_sudoku_app"
+}
