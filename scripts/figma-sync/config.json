@@ -1,19 +1,25 @@
 {
   "figmaFileKey": "cwmewA4MTWktw6E7uhQFK2",
+  "figmaFileUrl": "https://www.figma.com/design/cwmewA4MTWktw6E7uhQFK2/",
   "pages": {
     "JP": "0:1",
     "ZH": "6:6",
     "EN": "6:410"
   },
   "frames": [
-    { "nodeId": "11-1896", "file": "src/app/index.tsx", "component": "Home" },
-    { "nodeId": "18-6",    "file": "src/app/play/[difficulty].tsx", "component": "Play" },
-    { "nodeId": "12-3615", "file": "src/ui/ConfirmDialog.tsx", "component": "ResetDialog" }
+    { "nodeId": "11:1896", "file": "src/app/index.tsx",             "component": "Home" },
+    { "nodeId": "18:6",    "file": "src/app/play/[difficulty].tsx", "component": "Play" },
+    { "nodeId": "12:3615", "file": "src/ui/ConfirmDialog.tsx",      "component": "ResetDialog" }
   ],
-  "diffProps": ["name", "fills", "strokes", "effects", "opacity", "characters", "style", "boundVariables"],
+  "diffProps": ["name", "fills", "strokes", "effects", "opacity", "characters", "style", "boundVariables", "layoutSizingHorizontal", "layoutSizingVertical", "cornerRadius"],
+  "reactAppRoot": "react_sudoku_app",
   "devServer": { "cmd": "npm run web", "url": "http://localhost:8081" },
   "playwright": { "viewport": { "width": 1440, "height": 900 } },
   "androidPolicy": "mark_skipped",
   "pixelmatchThreshold": 0.1,
-  "githubRepo": "Bridge-LIU/react_sudoku_app"
+  "githubRepo": "Bridge-LIU/react_sudoku_app",
+  "fallback": {
+    "maxSnapshotBytes": 5242880,
+    "warnFrequency": 3
+  }
 }

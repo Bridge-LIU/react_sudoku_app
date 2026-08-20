@@ -3,3 +3,4 @@ snapshots/
 runs/
 *.bak
 __pycache__/
+.figma-sync-state.json
