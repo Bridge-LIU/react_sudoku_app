@@ -23,8 +23,8 @@ import { detect } from './01-detect.mjs';
 import { runDiff } from './02-diff.mjs';
 import { runFallback } from './03-fallback.mjs';
 import { fetchDetail } from './04-detail.mjs';
-import { applyChanges } from './05-apply.mjs';
-import { takeScreenshots } from './06-screenshot.mjs';
+import { applyChanges, resolveToRegisteredFrame } from './05-apply.mjs';
+import { takeScreenshots, generateDiff } from './06-screenshot.mjs';
 import { runTests } from './07-test.mjs';
 import { generateReport } from './08-report.mjs';
 
@@ -55,7 +55,7 @@ function parseArgs(argv) {
 --no-commit: Phase 8 の git commit を skip（テスト用、state 更新は実行）
 --run-tests: Phase 5 (npm test / e2e / audit) を実行（デフォルトは skip、時間かかる）
 --skip-report: Phase 6 (Excel 報告書) を skip（デフォルトは実行、Python + openpyxl 必要）
---run-screenshot: Phase 4 (Playwright screenshot) を実行（デフォルトは skip、dev server 事前起動必要、現状 簡易版）
+--run-screenshot: Phase 4 (Playwright screenshot) を実行（デフォルトは skip、dev server 事前起動必要、before/after 2 回撮影 + pixelmatch diff）
 --dry-run: state/snapshot/file 全て書き換えない`);
       process.exit(0);
     }
@@ -289,6 +289,34 @@ async function runPhases3to9({
     return;
   }
 
+  // ── nodeDiffs → 登記済 frame nodeId の解決（Phase 4 before/after 用） ──
+  // Phase 3 apply の resolveToRegisteredFrame と同じ考え方。ここで先に計算し、
+  // before/after 両 phase で同じ配列を使う（Phase 3 で file が変わっても frame は変わらない）。
+  const changedFrameIds = resolveChangedFrameIds({
+    config, nodeDiffs, snapshot: fallbackTriggered ? newSnapshot : undefined
+  });
+  console.log(`[Phase 3-pre] resolved frame nodeIds for screenshot: [${changedFrameIds.join(', ') || '(none)'}]`);
+
+  // Phase 4-before: apply の前に現状 UI を撮る
+  let beforeShotRes = null;
+  if (!args.skipScreenshot && changedFrameIds.length > 0) {
+    console.log(`[Phase 4-before] Playwright で apply 前の screenshot 撮影中...（dev server 事前起動前提）`);
+    try {
+      beforeShotRes = await takeScreenshots({
+        config, runDir: runsDir, phase: 'before', changedFrameIds
+      });
+      const took = beforeShotRes.screenshots.filter(s => s.before).length;
+      const skipped = beforeShotRes.screenshots.filter(s => s.skipped).length;
+      console.log(`[Phase 4-before] ✅ 撮影 ${took} / skip ${skipped} → ${beforeShotRes.outDir}`);
+    } catch (e) {
+      console.error(`[Phase 4-before] ⚠️ 撮影失敗（${e.message.slice(0, 150)}）— apply は続行`);
+    }
+  } else if (args.skipScreenshot) {
+    console.log(`[Phase 4-before] SKIP — --run-screenshot 未指定`);
+  } else {
+    console.log(`[Phase 4-before] SKIP — changedFrameIds 空`);
+  }
+
   // fallback 経由の場合は snapshot を渡し、descendant nodeId → 登記 frame の解決を有効化
   const applyRes = await applyChanges({
     mcp: mcpApply, config, nodeDiffs,
@@ -300,22 +328,55 @@ async function runPhases3to9({
   }
   writeFileSync(join(runsDir, 'apply.json'), JSON.stringify(applyRes, null, 2), 'utf-8');
 
-  // Phase 4: screenshot
+  // Phase 4-after: apply の後 & diff 生成
+  let afterShotRes = null;
+  const diffResults = new Map();  // component -> {diffPixels, diffPath}
   if (args.skipScreenshot) {
-    console.log(`[Phase 4] SKIP — --run-screenshot 未指定`);
+    console.log(`[Phase 4-after] SKIP — --run-screenshot 未指定`);
   } else if (applyRes.changedFiles.length === 0) {
-    console.log(`[Phase 4] SKIP — changedFiles 空`);
+    console.log(`[Phase 4-after] SKIP — changedFiles 空`);
+  } else if (changedFrameIds.length === 0) {
+    console.log(`[Phase 4-after] SKIP — changedFrameIds 空`);
   } else {
-    console.log(`[Phase 4] Playwright で screenshot 撮影中...（dev server 事前起動前提、現状 簡易版）`);
+    console.log(`[Phase 4-after] Playwright で apply 後の screenshot 撮影中...`);
     try {
-      const shotRes = await takeScreenshots({
-        config, changedFiles: applyRes.changedFiles, runDir: runsDir
+      afterShotRes = await takeScreenshots({
+        config, runDir: runsDir, phase: 'after', changedFrameIds
       });
-      console.log(`[Phase 4] ✅ ${shotRes.screenshots.length} 枚 → ${shotRes.outDir}`);
+      const took = afterShotRes.screenshots.filter(s => s.after).length;
+      console.log(`[Phase 4-after] ✅ 撮影 ${took} 枚`);
+
+      // pixelmatch diff 生成
+      for (const shot of afterShotRes.screenshots) {
+        if (shot.before && shot.after) {
+          const diffPath = join(afterShotRes.outDir, `${shot.component}_diff.png`);
+          try {
+            const { diffPixels } = generateDiff({
+              beforePath: shot.before, afterPath: shot.after, diffPath,
+              threshold: config.pixelmatchThreshold ?? 0.1
+            });
+            diffResults.set(shot.component, { diffPixels, diffPath });
+            console.log(`             diff ${shot.component}: ${diffPixels} px`);
+          } catch (e) {
+            console.error(`             ⚠️ diff ${shot.component} failed: ${e.message.slice(0, 120)}`);
+          }
+        }
+      }
     } catch (e) {
-      console.error(`[Phase 4] ⚠️ 撮影失敗（${e.message.slice(0, 150)}）— Phase 5 は続行`);
+      console.error(`[Phase 4-after] ⚠️ 撮影失敗（${e.message.slice(0, 150)}）— Phase 5 は続行`);
     }
   }
+
+  // ── design_changes.json 書き出し（Phase 6 Excel から参照） ──
+  const designChanges = buildDesignChanges({
+    config, nodeDiffs, changedFrameIds,
+    beforeShotRes, afterShotRes, diffResults, runsDir
+  });
+  writeFileSync(
+    join(runsDir, 'design_changes.json'),
+    JSON.stringify(designChanges, null, 2), 'utf-8'
+  );
+  console.log(`[Phase 4-report] design_changes.json 書き出し（entries=${designChanges.length}）`);
 
   // Phase 5: tests
   let testResults = null;
@@ -429,6 +490,94 @@ async function runPhases3to9({
     changedFiles: applyRes.changedFiles
   });
   console.log(`\n✅ APPROVED — state 更新完了${args.noCommit ? '（commit skip）' : '（commit 済み）'}`);
+}
+
+/**
+ * nodeDiffs から config.frames に登記されている frame nodeId を解決。
+ * - 直接登記 nodeId は即マッチ
+ * - snapshot があれば descendant → 祖先 frame を解決（05-apply の resolveToRegisteredFrame 流用）
+ * - 重複除去
+ */
+function resolveChangedFrameIds({ config, nodeDiffs, snapshot }) {
+  const frameById = new Map((config.frames || []).map(f => [f.nodeId, f]));
+  const hits = new Set();
+  for (const d of nodeDiffs || []) {
+    if (!d || !d.nodeId) continue;
+    if (frameById.has(d.nodeId)) {
+      hits.add(d.nodeId);
+      continue;
+    }
+    if (snapshot) {
+      const frame = resolveToRegisteredFrame(d.nodeId, snapshot, frameById);
+      if (frame) hits.add(frame.nodeId);
+    }
+  }
+  return Array.from(hits);
+}
+
+/**
+ * Phase 6 (Excel) に渡す design_changes[] を組み立てる。
+ * screenshot が撮れなかった frame（route=null や失敗）は before/after/diff=null。
+ * changes には対応する nodeDiff の生データを配列で入れる（同一 frame に複数 diff が集まる場合あり）。
+ */
+function buildDesignChanges({
+  config, nodeDiffs, changedFrameIds,
+  beforeShotRes, afterShotRes, diffResults, runsDir
+}) {
+  const frameById = new Map((config.frames || []).map(f => [f.nodeId, f]));
+  const shotByComponent = new Map();  // component -> merged shot info
+  for (const rs of [beforeShotRes, afterShotRes]) {
+    if (!rs) continue;
+    for (const s of rs.screenshots) {
+      const existing = shotByComponent.get(s.component) || {};
+      shotByComponent.set(s.component, {
+        before: s.before || existing.before || null,
+        after:  s.after  || existing.after  || null
+      });
+    }
+  }
+
+  // frame ごとに関連 diff を集約
+  const diffsByFrame = new Map();
+  for (const d of nodeDiffs || []) {
+    let frameId = null;
+    if (frameById.has(d.nodeId)) {
+      frameId = d.nodeId;
+    } else {
+      // 05-apply の resolveToRegisteredFrame は snapshot 必要。ここは既に解決済み
+      // の changedFrameIds を軸に、diff.nodeId が hit しないものは skip する。
+      continue;
+    }
+    if (!diffsByFrame.has(frameId)) diffsByFrame.set(frameId, []);
+    diffsByFrame.get(frameId).push(d);
+  }
+  // 直接 hit しなかった diff は「不明」なので、changedFrameIds に含まれる各 frame の
+  // changes として、直接 hit した diff だけを載せる（過剰包含を避ける）。
+
+  const results = [];
+  for (const frameId of changedFrameIds) {
+    const frame = frameById.get(frameId);
+    if (!frame) continue;
+    const shot = shotByComponent.get(frame.component) || {};
+    const diffMeta = diffResults.get(frame.component);
+    // pathを runsDir 相対に変換（Excel から参照しやすいように）
+    const rel = (p) => {
+      if (!p) return null;
+      const idx = p.indexOf('screenshots');
+      return idx >= 0 ? p.slice(idx).replace(/\\/g, '/') : p;
+    };
+    results.push({
+      component: frame.component,
+      file: frame.file,
+      node_id: frameId,
+      changes: diffsByFrame.get(frameId) || [],
+      before_png: rel(shot.before),
+      after_png: rel(shot.after),
+      diff_png: diffMeta ? rel(diffMeta.diffPath) : null,
+      diff_pixels: diffMeta ? diffMeta.diffPixels : null
+    });
+  }
+  return results;
 }
 
 main().catch(e => {

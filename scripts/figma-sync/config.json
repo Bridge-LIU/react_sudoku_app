@@ -7,9 +7,9 @@
     "EN": "6:410"
   },
   "frames": [
-    { "nodeId": "11:1896", "file": "src/app/index.tsx",             "component": "Home" },
-    { "nodeId": "18:6",    "file": "src/app/play/[difficulty].tsx", "component": "Play" },
-    { "nodeId": "12:3615", "file": "src/ui/ConfirmDialog.tsx",      "component": "ResetDialog" }
+    { "nodeId": "11:1896", "file": "src/app/index.tsx",             "component": "Home",        "route": "/" },
+    { "nodeId": "18:6",    "file": "src/app/play/[difficulty].tsx", "component": "Play",        "route": "/play/easy" },
+    { "nodeId": "12:3615", "file": "src/ui/ConfirmDialog.tsx",      "component": "ResetDialog", "route": null }
   ],
   "diffProps": ["name", "fills", "strokes", "effects", "opacity", "characters", "style", "boundVariables", "layoutSizingHorizontal", "layoutSizingVertical", "cornerRadius"],
   "reactAppRoot": "react_sudoku_app",
