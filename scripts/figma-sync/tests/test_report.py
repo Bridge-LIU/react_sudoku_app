@@ -171,7 +171,14 @@ def test_sheet_02_visual_with_design_changes_no_png(tmp_path):
         'component': 'Play',
         'file': 'src/app/play/[difficulty].tsx',
         'node_id': '18:6',
-        'changes': [{'property': 'fills[0]', 'kind': 'removed'}],
+        'changes': [{
+            'nodeId': '18:6',
+            'bindingChanges': [
+                {'node_id': '147:2', 'node_name': 'div.x', 'property': 'fills[0]',
+                 'from_variable_id': None, 'to_variable_id': 'VariableID:3:4',
+                 'change_kind': 'added'},
+            ],
+        }],
         'before_png': None,
         'after_png': None,
         'diff_pixels': 3580,
@@ -180,12 +187,114 @@ def test_sheet_02_visual_with_design_changes_no_png(tmp_path):
     fill_report(ctx)
     wb = load_workbook(str(ctx.output_path))
     ws = wb['02_視覚エビデンス']
-    # 変更 #1 header
+    # 変更 #1 header (row 6)
     assert '変更 #1' in str(ws.cell(6, 1).value)
     assert 'Play' in str(ws.cell(6, 1).value)
-    # BEFORE / AFTER cell に「画像なし」
-    assert ws['B7'].value == '(画像なし)'
-    assert ws['D7'].value == '(画像なし)'
+    # 概要 (row 7) に file と binding 数
+    assert '概要' in str(ws.cell(7, 1).value)
+    assert 'src/app/play' in str(ws.cell(7, 1).value)
+    assert '1 binding' in str(ws.cell(7, 1).value)
+    # bindingChanges 詳細行 (row 8) — indent プレフィクス + property + variable id
+    binding_line = str(ws.cell(8, 1).value or '')
+    assert 'fills[0]' in binding_line
+    assert 'VariableID:3:4' in binding_line
+    assert 'added' in binding_line
+    # BEFORE / AFTER cell に「画像なし — screenshot skip」 (row 9)
+    assert 'BEFORE' in str(ws['B9'].value or '')
+    assert '画像なし' in str(ws['B9'].value or '')
+    assert 'AFTER' in str(ws['D9'].value or '')
+
+
+def test_sheet_02_visual_text_only_when_screenshot_skipped(tmp_path):
+    """screenshot skip でも bindingChanges 詳細で「どこが変わったか」が判る（v11.1）"""
+    dc = [{
+        'component': 'Play',
+        'file': 'src/app/play/[difficulty].tsx',
+        'node_id': '18:6',
+        'changes': [{
+            'bindingChanges': [
+                {'node_id': '147:2', 'node_name': 'div.x', 'property': 'minWidth',
+                 'from_variable_id': None, 'to_variable_id': 'VariableID:11:2315',
+                 'change_kind': 'added'},
+                {'node_id': '147:2', 'node_name': 'div.x', 'property': 'strokes[0]',
+                 'from_variable_id': 'VariableID:3:26', 'to_variable_id': None,
+                 'change_kind': 'removed'},
+            ],
+        }],
+        'before_png': None,
+        'after_png': None,
+        'diff_pixels': None,
+    }]
+    ctx = _base_ctx(tmp_path, design_changes=dc)
+    fill_report(ctx)
+    wb = load_workbook(str(ctx.output_path))
+    ws = wb['02_視覚エビデンス']
+    # 概要に 2 binding 検出が入る
+    assert '2 binding' in str(ws.cell(7, 1).value or '')
+    # 詳細 2 行分
+    line1 = str(ws.cell(8, 1).value or '')
+    line2 = str(ws.cell(9, 1).value or '')
+    assert 'minWidth' in line1 and 'added' in line1
+    assert 'strokes[0]' in line2 and 'removed' in line2
+    # from_variable_id null は「(なし)」表示
+    assert '(なし)' in line1
+
+
+def test_sheet_04_binding_changes_section_expanded(tmp_path):
+    """04_コード変更 に「◆ Figma 変更詳細 (bindingChanges)」section と展開行がある"""
+    dc = [{
+        'component': 'Play',
+        'file': 'src/app/play/[difficulty].tsx',
+        'node_id': '18:6',
+        'changes': [{
+            'nodeId': '18:6',
+            'bindingChanges': [
+                {'node_id': '147:2', 'node_name': 'div.css-view-g5y9jx',
+                 'property': 'minWidth', 'from_variable_id': None,
+                 'to_variable_id': 'VariableID:11:2315', 'change_kind': 'added'},
+                {'node_id': '147:2', 'node_name': 'div.css-view-g5y9jx',
+                 'property': 'fills[0]', 'from_variable_id': None,
+                 'to_variable_id': 'VariableID:3:4', 'change_kind': 'added'},
+                {'node_id': '147:2', 'node_name': 'div.css-view-g5y9jx',
+                 'property': 'strokes[0]', 'from_variable_id': None,
+                 'to_variable_id': 'VariableID:3:26', 'change_kind': 'added'},
+            ],
+        }],
+        'before_png': None,
+        'after_png': None,
+    }]
+    ctx = _base_ctx(tmp_path, design_changes=dc)
+    fill_report(ctx)
+    wb = load_workbook(str(ctx.output_path))
+    ws = wb['04_コード変更']
+    # 行 17 に section header
+    assert 'Figma 変更詳細' in str(ws.cell(17, 1).value or '')
+    # 行 18 に header 行
+    assert str(ws.cell(18, 1).value) == '#'
+    assert str(ws.cell(18, 5).value) == 'property'
+    assert str(ws.cell(18, 8).value) == '種類'
+    # 行 19-21 に 3 binding 展開
+    assert ws.cell(19, 1).value == 1
+    assert 'Play' in str(ws.cell(19, 2).value or '')
+    assert str(ws.cell(19, 3).value) == '147:2'
+    assert str(ws.cell(19, 5).value) == 'minWidth'
+    assert str(ws.cell(19, 6).value) == '(なし)'
+    assert 'VariableID:11:2315' in str(ws.cell(19, 7).value or '')
+    assert str(ws.cell(19, 8).value) == 'added'
+    assert str(ws.cell(20, 5).value) == 'fills[0]'
+    assert str(ws.cell(21, 5).value) == 'strokes[0]'
+
+
+def test_sheet_04_binding_changes_empty_shows_placeholder(tmp_path):
+    """design_changes 空 or bindingChanges 空 → placeholder 行"""
+    ctx = _base_ctx(tmp_path, design_changes=[])
+    fill_report(ctx)
+    wb = load_workbook(str(ctx.output_path))
+    ws = wb['04_コード変更']
+    # section header は必ず出る
+    assert 'Figma 変更詳細' in str(ws.cell(17, 1).value or '')
+    # placeholder 行
+    assert '(bindingChanges なし)' in str(ws.cell(19, 2).value or '')
 
 
 def test_sheet_01_fallback_banner_shows_when_triggered(tmp_path):

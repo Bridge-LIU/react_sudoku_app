@@ -27,6 +27,49 @@ FALLBACK_FILL = PatternFill(start_color='FFFFEBEE', end_color='FFFFEBEE', fill_t
 FALLBACK_FONT = Font(bold=True, size=12, color='FFC62828')
 FALLBACK_BANNER_FONT = Font(bold=True, size=14, color='FFC62828')
 
+# bindingChanges の change_kind 別 背景色（added=薄緑、removed=薄赤、modified=薄黄）
+BINDING_FILL_ADDED = PatternFill(start_color='FFE8F5E9', end_color='FFE8F5E9', fill_type='solid')
+BINDING_FILL_REMOVED = PatternFill(start_color='FFFFEBEE', end_color='FFFFEBEE', fill_type='solid')
+BINDING_FILL_MODIFIED = PatternFill(start_color='FFFFF8E1', end_color='FFFFF8E1', fill_type='solid')
+
+
+def _binding_fill(change_kind: str):
+    """change_kind に応じた PatternFill を返す（未知の kind は None）。"""
+    k = (change_kind or '').lower()
+    if k == 'added':
+        return BINDING_FILL_ADDED
+    if k == 'removed':
+        return BINDING_FILL_REMOVED
+    if k == 'modified':
+        return BINDING_FILL_MODIFIED
+    return None
+
+
+def _collect_binding_rows(design_changes: list) -> list:
+    """design_changes[].changes[].bindingChanges[] を flat 化。
+
+    Returns: list of dict with keys:
+      component, frame_node_id, node_id, node_name, property,
+      from_variable_id, to_variable_id, change_kind
+    """
+    out = []
+    for dc in design_changes or []:
+        comp = dc.get('component', '')
+        frame_id = dc.get('node_id', '')
+        for ch in dc.get('changes', []) or []:
+            for b in ch.get('bindingChanges', []) or []:
+                out.append({
+                    'component': comp,
+                    'frame_node_id': frame_id,
+                    'node_id': b.get('node_id', ''),
+                    'node_name': b.get('node_name', ''),
+                    'property': b.get('property', ''),
+                    'from_variable_id': b.get('from_variable_id'),
+                    'to_variable_id': b.get('to_variable_id'),
+                    'change_kind': b.get('change_kind', ''),
+                })
+    return out
+
 
 @dataclass
 class ExcelFillContext:
@@ -196,6 +239,12 @@ def _detect_method(ctx: ExcelFillContext) -> str:
 
 # ── Sheet 02: 視覚エビデンス ──
 def _fill_02_visual(ws, ctx: ExcelFillContext) -> None:
+    """視覚エビデンス sheet。
+
+    v11.1 転倒：画像を主役から補助扱いに。まず「変更概要 + bindingChanges 詳細」を
+    テキストで並べ、その下に BEFORE/AFTER 画像（あれば）を置く。screenshot skip の
+    run でも「どこが変わったか」が Excel だけで判る。
+    """
     dc = ctx.design_changes or []
     if not dc:
         ws.cell(6, 1).value = '(視覚差分なし — screenshot 未収集 or design_changes 空)'
@@ -203,12 +252,52 @@ def _fill_02_visual(ws, ctx: ExcelFillContext) -> None:
 
     row = 6
     for idx, c in enumerate(dc, start=1):
+        # 変更ヘッダ
         ws.cell(row, 1).value = f'変更 #{idx}  {c.get("component", "")} ({c.get("node_id", "")})'
         ws.cell(row, 1).font = BOLD
         ws.cell(row, 1).fill = SECTION_FILL
         row += 1
-        # 画像埋込 (B / D 列)
-        for col_letter, key in [('B', 'before_png'), ('D', 'after_png')]:
+
+        # 概要 (bindingChanges 総数を含める)
+        binding_total = sum(
+            len(ch.get('bindingChanges', []) or []) for ch in (c.get('changes') or [])
+        )
+        summary_parts = [f'file={c.get("file", "")}']
+        if binding_total > 0:
+            summary_parts.append(f'{binding_total} binding 変更検出')
+        if c.get('diff_pixels') is not None:
+            summary_parts.append(f'diff_pixels={c.get("diff_pixels")}')
+        ws.cell(row, 1).value = '概要: ' + ', '.join(summary_parts)
+        ws.cell(row, 1).alignment = WRAP
+        row += 1
+
+        # bindingChanges 詳細（ツリー表示）
+        # changes[].bindingChanges[] を全部展開
+        binding_rows: list = []
+        for ch in (c.get('changes') or []):
+            for b in (ch.get('bindingChanges') or []):
+                binding_rows.append(b)
+        if binding_rows:
+            for j, b in enumerate(binding_rows):
+                prefix = '  └ ' if j == len(binding_rows) - 1 else '  ├ '
+                frm = b.get('from_variable_id') or '(なし)'
+                to = b.get('to_variable_id') or '(なし)'
+                line = f'{prefix}{b.get("property", "")}: {frm} → {to} ({b.get("change_kind", "")})'
+                ws.cell(row, 1).value = line
+                ws.cell(row, 1).alignment = WRAP
+                fill = _binding_fill(b.get('change_kind', ''))
+                if fill is not None:
+                    ws.cell(row, 1).fill = fill
+                row += 1
+        else:
+            ws.cell(row, 1).value = '  (bindingChanges なし)'
+            row += 1
+
+        # BEFORE / AFTER 画像（あれば埋込、無ければテキスト表示）
+        for col_letter, key, label in [
+            ('B', 'before_png', 'BEFORE'),
+            ('D', 'after_png', 'AFTER'),
+        ]:
             png = c.get(key)
             cell_addr = f'{col_letter}{row}'
             if png and Path(png).exists():
@@ -216,15 +305,11 @@ def _fill_02_visual(ws, ctx: ExcelFillContext) -> None:
                     img = XLImage(png)
                     img.width, img.height = 320, 200
                     ws.add_image(img, cell_addr)
+                    ws.row_dimensions[row].height = 155
                 except Exception:
-                    ws[cell_addr] = '(画像埋込失敗)'
+                    ws[cell_addr] = f'[{label}] (画像埋込失敗)'
             else:
-                ws[cell_addr] = '(画像なし)'
-        ws.row_dimensions[row].height = 155
-        row += 1
-        # 説明
-        ws.cell(row, 1).value = f'概要: file={c.get("file", "")}, diff_pixels={c.get("diff_pixels", "?")}'
-        ws.cell(row, 1).alignment = WRAP
+                ws[cell_addr] = f'[{label}] (画像なし — screenshot skip)'
         row += 2
 
 
@@ -372,6 +457,44 @@ def _fill_04_code_changes(ws, ctx: ExcelFillContext) -> None:
     ws.cell(15, 1).value = '合計'
     ws.cell(15, 1).font = BOLD
     ws.cell(15, 5).value = f'{len(changed_files)} files apply / {len(warnings)} warnings'
+
+    # ── ◆ Figma 変更詳細 (bindingChanges) section ──
+    # v11.1 追加：git commit 情報 だけでは「Figma 側でどの property が動いたか」が
+    # Excel から見えない。design_changes[].changes[].bindingChanges[] を flat 化して
+    # 1 binding = 1 row で展開する。change_kind に応じた背景色で視認性を上げる。
+    section_header_row = 17
+    ws.cell(section_header_row, 1).value = '◆ Figma 変更詳細 (bindingChanges)'
+    ws.cell(section_header_row, 1).font = SECTION_FONT
+    ws.cell(section_header_row, 1).fill = SECTION_FILL
+
+    header_row = section_header_row + 1
+    headers = ['#', '対象 frame', 'node_id', 'node_name', 'property', 'from', 'to', '種類']
+    for i, h in enumerate(headers, start=1):
+        ws.cell(header_row, i).value = h
+        ws.cell(header_row, i).font = BOLD
+        ws.cell(header_row, i).fill = SECTION_FILL
+
+    binding_rows = _collect_binding_rows(ctx.design_changes or [])
+    start_data_row = header_row + 1
+    if not binding_rows:
+        ws.cell(start_data_row, 1).value = 1
+        ws.cell(start_data_row, 2).value = '(bindingChanges なし)'
+        ws.cell(start_data_row, 8).value = 'N/A'
+    else:
+        for i, b in enumerate(binding_rows, start=1):
+            r = start_data_row + (i - 1)
+            ws.cell(r, 1).value = i
+            ws.cell(r, 2).value = f'{b["component"]} ({b["frame_node_id"]})' if b['component'] else b['frame_node_id']
+            ws.cell(r, 3).value = b['node_id']
+            ws.cell(r, 4).value = b['node_name']
+            ws.cell(r, 5).value = b['property']
+            ws.cell(r, 6).value = b['from_variable_id'] if b['from_variable_id'] is not None else '(なし)'
+            ws.cell(r, 7).value = b['to_variable_id'] if b['to_variable_id'] is not None else '(なし)'
+            ws.cell(r, 8).value = b['change_kind']
+            fill = _binding_fill(b['change_kind'])
+            if fill is not None:
+                # 種類 (H 列) のみ着色して行全体を汚さない
+                ws.cell(r, 8).fill = fill
 
 
 # ── Sheet 05: テストケース ──
