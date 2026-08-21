@@ -16,13 +16,26 @@ def main():
     root = Path(__file__).parent.parent
     template = root / 'templates' / 'sudoku_テスト実施報告書_本番版_2026-07-30_v10.xlsx'
 
-    test_results = json.loads((run_dir / 'test-results.json').read_text(encoding='utf-8'))
-    diff = json.loads((run_dir / 'diff.json').read_text(encoding='utf-8'))
-    diff_summary = {
-        'added': len(diff['added']),
-        'modified': len(diff['modified']),
-        'removed': len(diff['removed']),
-    }
+    tr_path = run_dir / 'test-results.json'
+    test_results = json.loads(tr_path.read_text(encoding='utf-8')) if tr_path.exists() else {}
+
+    diff_path = run_dir / 'diff.json'
+    diff_summary = {'added': 0, 'modified': 0, 'removed': 0}
+    if diff_path.exists():
+        diff = json.loads(diff_path.read_text(encoding='utf-8'))
+        if isinstance(diff, list):
+            # runner (run.mjs) の nodeDiffs 形式：[{kind: 'added'|'modified'|'removed', ...}]
+            for d in diff:
+                k = d.get('kind', 'modified')
+                if k in diff_summary:
+                    diff_summary[k] += 1
+        elif isinstance(diff, dict):
+            # 旧 07-test.mjs 形式（parity のため）
+            diff_summary = {
+                'added': len(diff.get('added', [])),
+                'modified': len(diff.get('modified', [])),
+                'removed': len(diff.get('removed', [])),
+            }
 
     shot_dir = run_dir / 'screenshots'
     screenshots = []

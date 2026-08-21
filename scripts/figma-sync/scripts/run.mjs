@@ -25,12 +25,13 @@ import { runFallback } from './03-fallback.mjs';
 import { fetchDetail } from './04-detail.mjs';
 import { applyChanges } from './05-apply.mjs';
 import { runTests } from './07-test.mjs';
+import { generateReport } from './08-report.mjs';
 
 // ── CLI 引数パース ──
 function parseArgs(argv) {
   const args = {
     headFile: null, diffFile: null, treeFile: null, jsxFile: null,
-    dryRun: false, confirm: null, noCommit: false, skipTests: true
+    dryRun: false, confirm: null, noCommit: false, skipTests: true, skipReport: false
   };
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -41,6 +42,7 @@ function parseArgs(argv) {
     else if (arg === '--confirm') args.confirm = argv[++i];  // yes | no
     else if (arg === '--no-commit') args.noCommit = true;
     else if (arg === '--run-tests') args.skipTests = false;
+    else if (arg === '--skip-report') args.skipReport = true;
     else if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--help' || arg === '-h') {
       console.log(`Usage: node scripts/run.mjs --head-file <path> [--diff-file <path>] [--tree-file <path>] [--jsx-file <path>] [--confirm yes|no] [--no-commit] [--dry-run]`);
@@ -49,6 +51,7 @@ function parseArgs(argv) {
 --confirm yes|no: Phase 7 の y/n 判定を CLI から指定（stdin プロンプト回避）
 --no-commit: Phase 8 の git commit を skip（テスト用、state 更新は実行）
 --run-tests: Phase 5 (npm test / e2e / audit) を実行（デフォルトは skip、時間かかる）
+--skip-report: Phase 6 (Excel 報告書) を skip（デフォルトは実行、Python + openpyxl 必要）
 --dry-run: state/snapshot/file 全て書き換えない`);
       process.exit(0);
     }
@@ -308,8 +311,19 @@ async function runPhases3to9({
     // 注：test 失敗は Phase 7 の判定に委ねる（SPEC L286 に従い強制中断しない）
   }
 
-  // Phase 6: STUB
-  console.log(`[Phase 6] SKIP — Excel report 未統合`);
+  // Phase 6: Excel report
+  if (args.skipReport) {
+    console.log(`[Phase 6] SKIP — --skip-report 指定`);
+  } else {
+    console.log(`[Phase 6] Python + openpyxl で Excel 報告書生成中...`);
+    const reportRes = await generateReport({ config, runDir: runsDir });
+    if (reportRes.exitCode === 0) {
+      console.log(`[Phase 6] ✅ 生成: ${reportRes.reportPath}`);
+    } else {
+      console.error(`[Phase 6] ⚠️ 生成失敗（exit=${reportRes.exitCode}）— Phase 7 は続行`);
+      if (reportRes.stderr) console.error(`           stderr: ${reportRes.stderr.slice(0, 300)}`);
+    }
+  }
 
   // Phase 7: y/n
   if (args.confirm === null) {
