@@ -44,7 +44,7 @@ def fill_report(ctx: ExcelFillContext) -> None:
         cov_ws = wb.create_sheet('12_カバレッジ')
         cov_ws['A1'] = 'カバレッジ サマリ'
         cov_ws['A1'].font = Font(bold=True, size=16)
-        cov = ctx.test_results.get('coverage', {})
+        cov = ctx.test_results.get('coverage') or {}  # None を空 dict に coerce
         rows = [
             ('Line', cov.get('line', 0)),
             ('Branch', cov.get('branch', 0)),
@@ -53,7 +53,8 @@ def fill_report(ctx: ExcelFillContext) -> None:
         ]
         for i, (label, val) in enumerate(rows, start=3):
             cov_ws.cell(i, 1).value = label
-            cov_ws.cell(i, 2).value = f'{val:.1f}%'
+            val_num = val if isinstance(val, (int, float)) else 0
+            cov_ws.cell(i, 2).value = f'{val_num:.1f}%'
 
     # screenshots
     for (sheet_name, cell_addr, png_path) in ctx.screenshots:
