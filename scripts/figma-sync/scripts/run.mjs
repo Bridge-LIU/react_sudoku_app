@@ -17,23 +17,36 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { loadConfig, loadState, saveState, loadSnapshot, saveSnapshot } from './lib/config.mjs';
 import { detect } from './01-detect.mjs';
 import { runDiff } from './02-diff.mjs';
 import { runFallback } from './03-fallback.mjs';
 import { fetchDetail } from './04-detail.mjs';
+import { applyChanges } from './05-apply.mjs';
 
 // ── CLI 引数パース ──
 function parseArgs(argv) {
-  const args = { headFile: null, diffFile: null, treeFile: null, dryRun: false };
+  const args = {
+    headFile: null, diffFile: null, treeFile: null, jsxFile: null,
+    dryRun: false, confirm: null, noCommit: false, skipTests: true
+  };
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--head-file') args.headFile = argv[++i];
     else if (arg === '--diff-file') args.diffFile = argv[++i];
     else if (arg === '--tree-file') args.treeFile = argv[++i];
+    else if (arg === '--jsx-file') args.jsxFile = argv[++i];
+    else if (arg === '--confirm') args.confirm = argv[++i];  // yes | no
+    else if (arg === '--no-commit') args.noCommit = true;
     else if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--help' || arg === '-h') {
-      console.log(`Usage: node scripts/run.mjs --head-file <path> [--diff-file <path>] [--tree-file <path>] [--dry-run]`);
+      console.log(`Usage: node scripts/run.mjs --head-file <path> [--diff-file <path>] [--tree-file <path>] [--jsx-file <path>] [--confirm yes|no] [--no-commit] [--dry-run]`);
+      console.log(`
+--jsx-file <path>: Phase 3 用 mock get_design_context データ。JSON形式 { "<nodeId>": "<jsx string>", ... }
+--confirm yes|no: Phase 7 の y/n 判定を CLI から指定（stdin プロンプト回避）
+--no-commit: Phase 8 の git commit を skip（テスト用、state 更新は実行）
+--dry-run: state/snapshot/file 全て書き換えない`);
       process.exit(0);
     }
   }
@@ -79,11 +92,14 @@ async function main() {
   }
 
   const SYNC_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+  const REACT_APP_ROOT = dirname(dirname(SYNC_ROOT));  // .../react_sudoku_app
   const CONFIG_PATH = join(SYNC_ROOT, 'config.json');
   const STATE_PATH = join(SYNC_ROOT, '.figma-sync-state.json');
   const SNAPSHOT_PATH = join(SYNC_ROOT, 'snapshots/last-full.json');
 
   const config = loadConfig(CONFIG_PATH);
+  // Override reactAppRoot to absolute path (config value is a bare name, not a resolved path)
+  config.reactAppRoot = REACT_APP_ROOT;
   const state = loadState(STATE_PATH);
   const { ts, runsDir } = ensureRunsDir(SYNC_ROOT);
 
@@ -152,12 +168,14 @@ async function main() {
       console.log(`[Phase 1-c] 詳細取得 nodes=${Object.keys(detailRes.nodes || {}).length}`);
       writeFileSync(join(runsDir, 'detail.json'), JSON.stringify(detailRes.nodes, null, 2), 'utf-8');
 
-      writeStatus(runsDir, 'CHANGED_READY_FOR_APPLY', {
+      await runPhases3to9({
+        args, config, runsDir, state,
         headVersionId: detectRes.headVersionId,
-        nodeDiffs: diffRes.nodeDiffs
+        nodeDiffs: diffRes.nodeDiffs,
+        fallbackTriggered: false,
+        newSnapshot: null,
+        statePath: STATE_PATH, snapshotPath: SNAPSHOT_PATH
       });
-      console.log(`\n🟡 CHANGED — Phase 3-9 未実装のため、ここで停止（Task 16 Step 5 の前提）`);
-      console.log(`   次: Phase 3 apply → 4 screenshot → 5 test → 6 report → 7 y/n → 8 commit → 9 state 更新`);
       process.exit(0);
     }
     // diff 空 → fallback へ
@@ -224,22 +242,135 @@ async function main() {
   }
 
   // CHANGED via fallback
-  if (!args.dryRun) {
-    saveSnapshot(SNAPSHOT_PATH, fallbackRes.newSnapshot);
-    // state 更新は Phase 9 (commit 後) の役割、ここではまだ更新しない
-  }
   writeFileSync(join(runsDir, 'diff.json'), JSON.stringify(fallbackRes.nodeDiffs, null, 2), 'utf-8');
-  writeStatus(runsDir, 'CHANGED_VIA_FALLBACK_READY_FOR_APPLY', {
-    headVersionId: detectRes.headVersionId,
-    nodeDiffCount: fallbackRes.nodeDiffs.length,
-    firstNodeDiff: fallbackRes.nodeDiffs[0]
-  });
-  console.log(`\n🟡 CHANGED (via fallback) — Phase 3-9 未実装のため、ここで停止（Task 16 Step 5 の前提）`);
   console.log(`   検出変更: ${fallbackRes.nodeDiffs.length} node`);
   for (const d of fallbackRes.nodeDiffs.slice(0, 5)) {
     console.log(`     - ${d.nodeId} (${d.nodeName || '?'}): ${d.kind} / props: ${(d.changedProps || []).join(', ')}`);
   }
+
+  await runPhases3to9({
+    args, config, runsDir, state,
+    headVersionId: detectRes.headVersionId,
+    nodeDiffs: fallbackRes.nodeDiffs,
+    fallbackTriggered: true,
+    newSnapshot: fallbackRes.newSnapshot,
+    statePath: STATE_PATH, snapshotPath: SNAPSHOT_PATH
+  });
   process.exit(0);
+}
+
+// ── Phase 3 → 7 → 8-9 統合 ──
+async function runPhases3to9({
+  args, config, runsDir, state,
+  headVersionId, nodeDiffs, fallbackTriggered,
+  newSnapshot, statePath, snapshotPath
+}) {
+  // Phase 3: apply
+  if (!args.jsxFile) {
+    needMore(runsDir, `get_design_context(node_ids=[${nodeDiffs.map(d => d.nodeId).join(',')}])`,
+      `Phase 3 JSX 生成用データ。JSON形式 {"<nodeId>":"<jsx>"} を --jsx-file で渡す`);
+  }
+  const jsxData = loadJsonFile(args.jsxFile, '--jsx-file');
+  const mcpApply = { getDesignContext: async ({ nodeId }) => ({ jsx: jsxData[nodeId] || '' }) };
+
+  if (args.dryRun) {
+    console.log(`[Phase 3] DRY-RUN: skip 実 file 書換、jsxData keys=${Object.keys(jsxData).join(',')}`);
+    writeStatus(runsDir, 'DRY_RUN_STOPPED', { headVersionId, nodeDiffCount: nodeDiffs.length });
+    return;
+  }
+
+  const applyRes = await applyChanges({ mcp: mcpApply, config, nodeDiffs });
+  console.log(`[Phase 3] changedFiles=${applyRes.changedFiles.length}, unregistered=${applyRes.unregistered.length}, errors=${applyRes.errors.length}`);
+  if (applyRes.errors.length > 0) {
+    console.log('           ⚠️ apply errors:', JSON.stringify(applyRes.errors, null, 2));
+  }
+  writeFileSync(join(runsDir, 'apply.json'), JSON.stringify(applyRes, null, 2), 'utf-8');
+
+  // Phase 4-5-6: STUB
+  console.log(`[Phase 4-6] SKIP — screenshot / test / Excel は runner に未統合`);
+
+  // Phase 7: y/n
+  if (args.confirm === null) {
+    needMore(runsDir, `human confirmation`,
+      `Phase 7 の判定が必要。--confirm yes または --confirm no を追加`);
+  }
+  console.log(`[Phase 7] confirm=${args.confirm}`);
+
+  if (args.confirm === 'no') {
+    // Rollback via git restore
+    if (applyRes.changedFiles.length > 0) {
+      const absFiles = applyRes.changedFiles.map(f => join(config.reactAppRoot, f));
+      const gitRestoreRes = spawnSync('git', ['restore', '--', ...absFiles], {
+        encoding: 'utf-8', cwd: config.reactAppRoot
+      });
+      console.log(`[Phase 9-rollback] git restore ${absFiles.length} file, status=${gitRestoreRes.status}`);
+      if (gitRestoreRes.status !== 0) {
+        console.error(`   ⚠️ ${gitRestoreRes.stderr}`);
+      }
+    }
+    writeStatus(runsDir, 'REJECTED', {
+      headVersionId, changedFilesRestored: applyRes.changedFiles,
+      note: 'state / snapshot は更新されない、次回同じ diff で再検出可能'
+    });
+    console.log(`\n✅ REJECTED — .bak 不使用、git restore で rollback 済み、state は不変`);
+    return;
+  }
+
+  if (args.confirm !== 'yes') {
+    console.error(`❌ --confirm は 'yes' or 'no' が必要（受け取った: ${args.confirm}）`);
+    writeStatus(runsDir, 'BAD_CONFIRM_ARG', { confirm: args.confirm });
+    process.exit(1);
+  }
+
+  // Phase 8: commit（--no-commit なら skip）
+  if (args.noCommit) {
+    console.log(`[Phase 8] SKIP — --no-commit 指定、commit 実行しない`);
+  } else {
+    const commitMsg = [
+      '機能更新: Figma 同期による UI 反映',
+      '',
+      ...applyRes.changedFiles.map(f => `- ${f}`),
+      '',
+      `Figma nodeIds: ${nodeDiffs.map(d => d.nodeId).join(', ')}`,
+      `検出方式: ${fallbackTriggered ? 'figma_get_file_at_version fallback' : 'figma_diff_versions'}`,
+      '',
+      'Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>'
+    ].join('\n');
+    const gitAdd = spawnSync('git', ['add', ...applyRes.changedFiles.map(f => join(config.reactAppRoot, f))], {
+      encoding: 'utf-8', cwd: config.reactAppRoot
+    });
+    if (gitAdd.status !== 0) {
+      console.error(`❌ git add failed: ${gitAdd.stderr}`);
+      process.exit(1);
+    }
+    const gitCommit = spawnSync('git', ['commit', '-m', commitMsg], {
+      encoding: 'utf-8', cwd: config.reactAppRoot
+    });
+    console.log(`[Phase 8] git commit status=${gitCommit.status}`);
+    if (gitCommit.status !== 0) {
+      console.error(`   ⚠️ ${gitCommit.stderr}`);
+      writeStatus(runsDir, 'COMMIT_FAILED', { stderr: gitCommit.stderr });
+      process.exit(1);
+    }
+  }
+
+  // Phase 9: state 更新
+  const now = new Date().toISOString();
+  const newState = {
+    last_version_id: headVersionId,
+    last_run_at: now
+  };
+  if (fallbackTriggered) {
+    newState.last_fallback_at = now;
+    newState.fallback_count_last_7days = (state.fallback_count_last_7days || 0) + 1;
+    saveSnapshot(snapshotPath, newSnapshot);
+  }
+  saveState(statePath, newState);
+  writeStatus(runsDir, 'APPROVED', {
+    headVersionId, committed: !args.noCommit,
+    changedFiles: applyRes.changedFiles
+  });
+  console.log(`\n✅ APPROVED — state 更新完了${args.noCommit ? '（commit skip）' : '（commit 済み）'}`);
 }
 
 main().catch(e => {
