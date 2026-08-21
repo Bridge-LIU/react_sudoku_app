@@ -22,10 +22,11 @@ test.describe('Sudoku production smoke E2E', () => {
     await page.goto('/');
     await expect(page).toHaveTitle('Sudoku');
     // 難易度セレクターの日本語ラベルが見える（現状デフォルト日本語）
-    await expect(page.getByText('難易度を選択')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('初級')).toBeVisible();
-    await expect(page.getByText('中級')).toBeVisible();
-    await expect(page.getByText('上級')).toBeVisible();
+    // react-native-web は <Text> を wrapper div 3 層に展開するため .first() で strict-mode 回避
+    await expect(page.getByText('難易度を選択').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('初級').first()).toBeVisible();
+    await expect(page.getByText('中級').first()).toBeVisible();
+    await expect(page.getByText('上級').first()).toBeVisible();
   });
 
   test('difficulty selection navigates to /play/easy', async ({ page }) => {
