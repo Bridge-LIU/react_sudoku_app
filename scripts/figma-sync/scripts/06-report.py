@@ -43,6 +43,18 @@ def main():
         for i, png in enumerate(sorted(shot_dir.glob('*_after.png'))):
             screenshots.append(('06_スナップショット', f'K{15 + i * 3}', str(png)))
 
+    # design_changes.json（Agent A が Phase 4 完了時に書き出す）
+    dc_path = run_dir / 'design_changes.json'
+    design_changes = []
+    if dc_path.exists():
+        design_changes = json.loads(dc_path.read_text(encoding='utf-8')) or []
+        # PNG の相対パス→絶対パス化（run_dir 起点）
+        for dc in design_changes:
+            for k in ('before_png', 'after_png', 'diff_png'):
+                v = dc.get(k)
+                if v and not Path(v).is_absolute():
+                    dc[k] = str(run_dir / v)
+
     ctx = ExcelFillContext(
         template_path=str(template),
         output_path=str(run_dir / 'report.xlsx'),
@@ -50,6 +62,7 @@ def main():
         test_results=test_results,
         screenshots=screenshots,
         diff_summary=diff_summary,
+        design_changes=design_changes,
     )
     fill_report(ctx)
     print(f'Generated {ctx.output_path}')
