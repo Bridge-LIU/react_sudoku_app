@@ -16,15 +16,22 @@ export async function runTests({ config, runDir }) {
   };
 
   // Unit + integration + component
-  const unitRes = spawnSync('npm', ['test', '--', '--coverage'], {
+  // React app has test:engine (vitest), test:components (jest), test:e2e (playwright)
+  // No plain "test" script → use test:engine and test:components explicitly
+  const engineRes = spawnSync('npm', ['run', 'test:engine'], {
+    cwd: config.reactAppRoot,
+    encoding: 'utf-8',
+    shell: true
+  });
+  const componentsRes = spawnSync('npm', ['run', 'test:components'], {
     cwd: config.reactAppRoot,
     encoding: 'utf-8',
     shell: true
   });
   results.unit = {
-    exitCode: unitRes.status,
-    stdout: unitRes.stdout,
-    stderr: unitRes.stderr
+    engine: { exitCode: engineRes.status, stdout: engineRes.stdout, stderr: engineRes.stderr },
+    components: { exitCode: componentsRes.status, stdout: componentsRes.stdout, stderr: componentsRes.stderr },
+    exitCode: (engineRes.status === 0 && componentsRes.status === 0) ? 0 : 1
   };
 
   // E2E

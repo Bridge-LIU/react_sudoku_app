@@ -24,6 +24,7 @@ import { runDiff } from './02-diff.mjs';
 import { runFallback } from './03-fallback.mjs';
 import { fetchDetail } from './04-detail.mjs';
 import { applyChanges } from './05-apply.mjs';
+import { runTests } from './07-test.mjs';
 
 // ── CLI 引数パース ──
 function parseArgs(argv) {
@@ -39,6 +40,7 @@ function parseArgs(argv) {
     else if (arg === '--jsx-file') args.jsxFile = argv[++i];
     else if (arg === '--confirm') args.confirm = argv[++i];  // yes | no
     else if (arg === '--no-commit') args.noCommit = true;
+    else if (arg === '--run-tests') args.skipTests = false;
     else if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--help' || arg === '-h') {
       console.log(`Usage: node scripts/run.mjs --head-file <path> [--diff-file <path>] [--tree-file <path>] [--jsx-file <path>] [--confirm yes|no] [--no-commit] [--dry-run]`);
@@ -46,6 +48,7 @@ function parseArgs(argv) {
 --jsx-file <path>: Phase 3 用 mock get_design_context データ。JSON形式 { "<nodeId>": "<jsx string>", ... }
 --confirm yes|no: Phase 7 の y/n 判定を CLI から指定（stdin プロンプト回避）
 --no-commit: Phase 8 の git commit を skip（テスト用、state 更新は実行）
+--run-tests: Phase 5 (npm test / e2e / audit) を実行（デフォルトは skip、時間かかる）
 --dry-run: state/snapshot/file 全て書き換えない`);
       process.exit(0);
     }
@@ -286,8 +289,27 @@ async function runPhases3to9({
   }
   writeFileSync(join(runsDir, 'apply.json'), JSON.stringify(applyRes, null, 2), 'utf-8');
 
-  // Phase 4-5-6: STUB
-  console.log(`[Phase 4-6] SKIP — screenshot / test / Excel は runner に未統合`);
+  // Phase 4: STUB
+  console.log(`[Phase 4] SKIP — screenshot (Playwright + dev server) 未統合`);
+
+  // Phase 5: tests
+  let testResults = null;
+  if (args.skipTests) {
+    console.log(`[Phase 5] SKIP — --run-tests 未指定`);
+  } else {
+    console.log(`[Phase 5] npm test / e2e / audit 実行中...（時間かかる）`);
+    testResults = await runTests({ config, runDir: runsDir });
+    const unitPass = testResults.unit?.exitCode === 0;
+    const e2ePass = testResults.e2e?.exitCode === 0;
+    const auditIssues = testResults.audit?.json?.metadata?.vulnerabilities?.total ?? '?';
+    const covLine = testResults.coverage?.total?.lines?.pct ?? '-';
+    console.log(`[Phase 5] unit=${unitPass ? 'PASS' : 'FAIL'}, e2e=${e2ePass ? 'PASS' : 'FAIL'}, audit issues=${auditIssues}, coverage line=${covLine}%`);
+    console.log(`           test-results.json → ${runsDir}/test-results.json`);
+    // 注：test 失敗は Phase 7 の判定に委ねる（SPEC L286 に従い強制中断しない）
+  }
+
+  // Phase 6: STUB
+  console.log(`[Phase 6] SKIP — Excel report 未統合`);
 
   // Phase 7: y/n
   if (args.confirm === null) {
