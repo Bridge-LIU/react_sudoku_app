@@ -184,6 +184,11 @@ def main():
 
     phase_results = _derive_phase_results(run_dir, status, apply_result, diff_data)
 
+    # ── Fallback 発動情報 (Phase 1-b-fallback) ──
+    # fallback.log があれば fallback 経路発動と判定、内容を ctx に渡す
+    fallback_info = _load_json(run_dir / 'fallback.log', {})
+    fallback_triggered = bool(fallback_info) and bool(fallback_info.get('fallbackStatus'))
+
     ctx = ExcelFillContext(
         template_path=str(template),
         output_path=str(run_dir / 'report.xlsx'),
@@ -198,6 +203,8 @@ def main():
         git_info=git_info,
         phase_results=phase_results,
         final_status=status,
+        fallback_triggered=fallback_triggered,
+        fallback_info=fallback_info,
     )
     fill_report(ctx)
     print(f'Generated {ctx.output_path}')

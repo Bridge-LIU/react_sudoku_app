@@ -188,6 +188,89 @@ def test_sheet_02_visual_with_design_changes_no_png(tmp_path):
     assert ws['D7'].value == '(画像なし)'
 
 
+def test_sheet_01_fallback_banner_shows_when_triggered(tmp_path):
+    """fallback_triggered=True の run で 01_表紙サマリ A3 に赤字 banner が入る"""
+    fi = {
+        'ts': '2026-08-21T05-21-14-075Z',
+        'reason': 'DIFF_EMPTY',
+        'fromVersion': 'V_OLD',
+        'headVersionId': 'V_NEW',
+        'fallbackStatus': 'CHANGED',
+        'nodeDiffCount': 1,
+    }
+    ctx = _base_ctx(tmp_path, fallback_triggered=True, fallback_info=fi)
+    fill_report(ctx)
+    wb = load_workbook(str(ctx.output_path))
+    ws = wb['01_表紙サマリ']
+    banner = str(ws.cell(3, 1).value or '')
+    assert 'FALLBACK' in banner
+    assert 'DIFF_EMPTY' in banner
+    assert '1' in banner  # nodeDiffCount
+
+
+def test_sheet_01_fallback_banner_absent_when_not_triggered(tmp_path):
+    """通常経路 (fallback_triggered=False) では banner が空"""
+    ctx = _base_ctx(tmp_path)  # default fallback_triggered=False
+    fill_report(ctx)
+    wb = load_workbook(str(ctx.output_path))
+    ws = wb['01_表紙サマリ']
+    assert ws.cell(3, 1).value in (None, '')
+
+
+def test_sheet_03_fallback_section_populated(tmp_path):
+    """fallback 発動時、03_state.json差分 に「◆ Fallback 発動情報」section と詳細"""
+    fi = {
+        'reason': 'DIFF_EMPTY',
+        'fromVersion': 'V_OLD',
+        'headVersionId': 'V_NEW',
+        'fallbackStatus': 'CHANGED',
+        'nodeDiffCount': 3,
+    }
+    ctx = _base_ctx(tmp_path, fallback_triggered=True, fallback_info=fi)
+    fill_report(ctx)
+    wb = load_workbook(str(ctx.output_path))
+    ws = wb['03_state.json差分']
+    assert 'Fallback' in str(ws.cell(3, 1).value or '')
+    # 右側 (H/J 列) に発動理由と node 数
+    labels = [str(ws.cell(r, 8).value or '') for r in range(4, 9)]
+    values = [str(ws.cell(r, 10).value or '') for r in range(4, 9)]
+    assert any('reason' in l for l in labels)
+    assert any('DIFF_EMPTY' in v for v in values)
+    assert any('3' == v for v in values)  # nodeDiffCount
+
+
+def test_sheet_04_detection_route_column_added(tmp_path):
+    """04_コード変更 の H 列に「検出経路」ヘッダーと fallback 行がある"""
+    fi = {'reason': 'DIFF_EMPTY', 'fallbackStatus': 'CHANGED', 'nodeDiffCount': 1}
+    ctx = _base_ctx(tmp_path, fallback_triggered=True, fallback_info=fi)
+    fill_report(ctx)
+    wb = load_workbook(str(ctx.output_path))
+    ws = wb['04_コード変更']
+    # 行 4 H 列 = ヘッダー「検出経路」
+    assert str(ws.cell(4, 8).value or '') == '検出経路'
+    # 行 5 H 列 = fallback ラベル
+    assert 'fallback' in str(ws.cell(5, 8).value or '').lower()
+
+
+def test_sheet_06_fallback_verdict_row(tmp_path):
+    """06_総合結果 判定表に「Fallback 経路発動: YES」行がある"""
+    fi = {'reason': 'DIFF_EMPTY', 'fallbackStatus': 'CHANGED', 'nodeDiffCount': 2}
+    ctx = _base_ctx(tmp_path, fallback_triggered=True, fallback_info=fi)
+    fill_report(ctx)
+    wb = load_workbook(str(ctx.output_path))
+    ws = wb['06_総合結果']
+    # verdict table 行 14〜のどこかに Fallback 経路発動 = YES
+    found = False
+    for r in range(14, 26):
+        label = str(ws.cell(r, 1).value or '')
+        if 'Fallback' in label and '発動' in label:
+            assert 'YES' in str(ws.cell(r, 2).value or '')
+            assert '2' in str(ws.cell(r, 3).value or '')  # nodeDiffCount detail
+            found = True
+            break
+    assert found, 'Fallback 経路発動 row not found in verdict table'
+
+
 def test_rejected_status_generates_appropriate_actions(tmp_path):
     """REJECTED 状態で 次回アクション行に「要因調査」系メッセージ"""
     ctx = _base_ctx(tmp_path, final_status='REJECTED', git_info={

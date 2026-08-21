@@ -22,6 +22,10 @@ WRAP = Alignment(wrap_text=True, vertical='top', horizontal='left')
 CENTER = Alignment(horizontal='center', vertical='center')
 SECTION_FILL = PatternFill(start_color='FFE7F1FA', end_color='FFE7F1FA', fill_type='solid')
 SECTION_FONT = Font(bold=True, size=12)
+# Fallback 発動時の赤 banner / section 用の書式
+FALLBACK_FILL = PatternFill(start_color='FFFFEBEE', end_color='FFFFEBEE', fill_type='solid')
+FALLBACK_FONT = Font(bold=True, size=12, color='FFC62828')
+FALLBACK_BANNER_FONT = Font(bold=True, size=14, color='FFC62828')
 
 
 @dataclass
@@ -41,6 +45,11 @@ class ExcelFillContext:
     git_info: Optional[dict] = None
     phase_results: Optional[dict] = None
     final_status: Optional[str] = None
+    # Fallback (Phase 1-b-fallback) 経路発動情報
+    # fallback_triggered: fallback.log が存在し fallbackStatus が空でない
+    # fallback_info: fallback.log の中身 (reason, fromVersion, headVersionId, fallbackStatus, nodeDiffCount)
+    fallback_triggered: bool = False
+    fallback_info: dict = field(default_factory=dict)
 
 
 def _log(msg: str) -> None:
@@ -82,6 +91,23 @@ def _fill_01_cover(ws, ctx: ExcelFillContext) -> None:
     cfg = ctx.config or {}
     git = ctx.git_info or {}
     apply_res = ctx.apply_result or {}
+
+    # ── Fallback 発動 banner (最上位、目立つ赤字) ──
+    # fallback 起きてない run では出さない（不要な UI 混乱を避ける）
+    if ctx.fallback_triggered:
+        fi = ctx.fallback_info or {}
+        reason = fi.get('reason', 'UNKNOWN')
+        node_cnt = fi.get('nodeDiffCount', '?')
+        banner = (
+            f'⚠️ FALLBACK 発動 (raw property / boundVariables 系変更検出) — '
+            f'reason={reason}、fallback 経由で {node_cnt} 件検出'
+        )
+        cell = ws.cell(3, 1)
+        cell.value = banner
+        cell.font = FALLBACK_BANNER_FONT
+        cell.fill = FALLBACK_FILL
+        cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+        ws.row_dimensions[3].height = 32
 
     changed_files = apply_res.get('changedFiles') or git.get('changed_files') or []
     commit_sha = (git.get('commit_sha') or '')[:8]
@@ -159,9 +185,12 @@ def _fill_01_cover(ws, ctx: ExcelFillContext) -> None:
 
 
 def _detect_method(ctx: ExcelFillContext) -> str:
+    # 直接 flag があればそれを優先（06-report.py が fallback.log から設定）
+    if ctx.fallback_triggered:
+        return 'figma_get_file_at_version fallback (local-diff)'
     ph = ctx.phase_results or {}
     if 'fallback' in str(ph.get('phase_1b_fallback', '')).lower() and 'CHANGED' in str(ph.get('phase_1b_fallback', '')):
-        return 'figma_get_file_at_version fallback'
+        return 'figma_get_file_at_version fallback (local-diff)'
     return 'figma_diff_versions'
 
 
@@ -203,6 +232,30 @@ def _fill_02_visual(ws, ctx: ExcelFillContext) -> None:
 def _fill_03_state_diff(ws, ctx: ExcelFillContext) -> None:
     before = ctx.state_before or {}
     after = ctx.state_after or {}
+
+    # ── Fallback 発動情報 section (冒頭、行 3) ──
+    # fallback 経由で state / snapshot が更新されたかを説明する rich context
+    if ctx.fallback_triggered:
+        fi = ctx.fallback_info or {}
+        ws.cell(3, 1).value = '◆ Fallback 発動情報'
+        ws.cell(3, 1).font = FALLBACK_FONT
+        ws.cell(3, 1).fill = FALLBACK_FILL
+        fb_rows = [
+            ('発動理由 (reason)', fi.get('reason', 'UNKNOWN')),
+            ('From version', fi.get('fromVersion', '(N/A)')),
+            ('To version (head)', fi.get('headVersionId', '(N/A)')),
+            ('fallback status', fi.get('fallbackStatus', '(N/A)')),
+            ('検出 node 数 (local-diff)', fi.get('nodeDiffCount', 0)),
+        ]
+        for i, (label, val) in enumerate(fb_rows, start=1):
+            # 通常 section は行 4 (◆ バージョン...) から始まるので、
+            # fallback section は上方に押し込むのでなく右側 (H-K 列) に横並びで置く
+            r = 3 + i
+            ws.cell(r, 8).value = label
+            ws.cell(r, 8).font = BOLD
+            ws.cell(r, 8).fill = FALLBACK_FILL
+            ws.cell(r, 10).value = str(val)
+            ws.cell(r, 10).fill = FALLBACK_FILL
 
     def _cmp(k):
         b = before.get(k, '(なし)')
@@ -274,6 +327,15 @@ def _fill_04_code_changes(ws, ctx: ExcelFillContext) -> None:
     sha = (git.get('commit_sha') or '')[:8] or '(uncommitted)'
     commit_msg = git.get('commit_msg') or ''
 
+    # 検出経路ラベル: fallback 起動時は明示 (H 列に追加 / F 列 も上書き)
+    route_label = 'fallback (local-diff)' if ctx.fallback_triggered else 'figma_diff_versions'
+
+    # 追加ヘッダー: H 列に「検出経路」列 (fallback 有無で明示)
+    ws.cell(4, 8).value = '検出経路'
+    ws.cell(4, 8).font = BOLD
+    if ctx.fallback_triggered:
+        ws.cell(4, 8).fill = FALLBACK_FILL
+
     # コミット / 適用ファイル (行 5-)
     for i, f in enumerate(changed_files[:4], start=1):
         r = 4 + i
@@ -282,8 +344,16 @@ def _fill_04_code_changes(ws, ctx: ExcelFillContext) -> None:
         ws.cell(r, 3).value = f
         ws.cell(r, 4).value = '値変更'
         ws.cell(r, 5).value = commit_msg[:80] or '(msg なし)'
-        ws.cell(r, 6).value = 'Figma nodeDiff 経由'
+        # F 列: 従来「Figma nodeDiff 経由」→ fallback 時は明示
+        ws.cell(r, 6).value = (
+            'Figma fallback 経路 (raw property)' if ctx.fallback_triggered
+            else 'Figma nodeDiff 経由'
+        )
         ws.cell(r, 7).value = 'PASS' if not apply_res.get('errors') else 'FAIL'
+        # H 列: 検出経路 (明示)
+        ws.cell(r, 8).value = route_label
+        if ctx.fallback_triggered:
+            ws.cell(r, 8).fill = FALLBACK_FILL
 
     # warnings (drift 相当) 行 11-14
     warnings = diff_sum.get('warnings', []) or []
@@ -416,10 +486,18 @@ def _fill_06_summary(ws, ctx: ExcelFillContext) -> None:
     e2e_verdict = 'PASS' if e2e.get('exitCode') == 0 else ('FAIL' if e2e else 'SKIP')
 
     ph = ctx.phase_results or {}
+    fi = ctx.fallback_info or {}
+    fb_yes_no = 'YES' if ctx.fallback_triggered else 'NO'
+    fb_detail = (
+        f'reason={fi.get("reason", "?")}、拾えた変更={fi.get("nodeDiffCount", 0)} 件'
+        if ctx.fallback_triggered
+        else '通常 (figma_diff_versions で完結)'
+    )
     verdict_rows = [
         ('Figma 変更検出', f'{len(dc)} 変更', 'design_changes.json', 'PASS' if dc else 'N/A'),
         ('コード反映 (apply)', f'{len(changed_files)} files', 'apply.json', 'PASS' if changed_files else 'N/A'),
         ('画像差分 (pixelmatch)', f'{sum(c.get("diff_pixels", 0) or 0 for c in dc)} px 合計', 'screenshots/', 'INFO'),
+        ('Fallback 経路発動', fb_yes_no, fb_detail, 'FALLBACK' if ctx.fallback_triggered else 'N/A'),
         ('unit test', unit_verdict, '(vitest / jest)', unit_verdict),
         ('e2e test', e2e_verdict, '(playwright)', e2e_verdict),
         ('PR 状態', pr_url, 'gh pr', 'PASS' if pr_url != '(未作成)' else 'N/A'),
@@ -430,6 +508,11 @@ def _fill_06_summary(ws, ctx: ExcelFillContext) -> None:
         for col, val in enumerate(row_data, start=1):
             ws.cell(r, col).value = val
             ws.cell(r, col).alignment = WRAP
+        # Fallback 行だけ赤色 fill (fallback 発動時のみ)
+        if row_data[0] == 'Fallback 経路発動' and ctx.fallback_triggered:
+            for col in range(1, 5):
+                ws.cell(r, col).fill = FALLBACK_FILL
+                ws.cell(r, col).font = FALLBACK_FONT
 
     # ◆ 次回アクション (行 27-)
     status = ctx.final_status or 'UNKNOWN'
