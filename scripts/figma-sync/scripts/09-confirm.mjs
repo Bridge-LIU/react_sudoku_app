@@ -1,4 +1,4 @@
-import { existsSync, unlinkSync, copyFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { saveState, saveSnapshot } from './lib/config.mjs';
@@ -22,13 +22,12 @@ export async function confirmAndCommit({
   rl.close();
 
   if (ans.trim().toLowerCase() !== 'y') {
-    // Rollback
-    for (const f of changedFiles) {
-      const abs = join(config.reactAppRoot, f);
-      const bak = abs + '.bak';
-      if (existsSync(bak)) {
-        copyFileSync(bak, abs);
-        unlinkSync(bak);
+    // Rollback: git restore で React コード復元（.bak 不要、git 管理下のため）
+    if (changedFiles.length > 0) {
+      const absFiles = changedFiles.map(f => join(config.reactAppRoot, f));
+      const gitRestoreRes = spawnSync('git', ['restore', '--', ...absFiles], { encoding: 'utf-8', shell: true });
+      if (gitRestoreRes.status !== 0) {
+        console.error(`git restore failed: ${gitRestoreRes.stderr}`);
       }
     }
     writeFileSync(join(runDir, 'status.txt'), 'REJECTED');
@@ -36,10 +35,6 @@ export async function confirmAndCommit({
   }
 
   // Phase 8: commit
-  for (const f of changedFiles) {
-    const bak = join(config.reactAppRoot, f) + '.bak';
-    if (existsSync(bak)) unlinkSync(bak);
-  }
   writeFileSync(join(runDir, 'status.txt'), 'APPROVED');
 
   const detectMethod = fallbackTriggered ? 'figma_get_file_at_version fallback' : 'figma_diff_versions';

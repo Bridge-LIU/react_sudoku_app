@@ -1,4 +1,4 @@
-import { writeFileSync, copyFileSync, existsSync } from 'node:fs';
+import { writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -7,7 +7,7 @@ import { join } from 'node:path';
  * Vue 開発者向けメモ:
  * - Vue の `<script setup>` を差し替えるのと同じイメージで、
  *   Figma から取得した JSX を対応する React ファイルに上書きする。
- * - 破壊的操作なので必ず `.bak` バックアップを取り、失敗時は復元。
+ * - 破壊的操作だが git 管理下のため、rollback は Phase 7 で `git restore` に一任。
  *
  * @param {object} params
  * @param {object} params.mcp - MCP client (getDesignContext を持つ)
@@ -35,16 +35,11 @@ export async function applyChanges({ mcp, config, nodeDiffs }) {
     }
 
     try {
-      copyFileSync(absPath, absPath + '.bak');
       const ctx = await mcp.getDesignContext({ nodeId: diff.nodeId });
       writeFileSync(absPath, ctx.jsx, 'utf-8');
       changedFiles.push(frame.file);
     } catch (e) {
       errors.push({ nodeId: diff.nodeId, file: frame.file, reason: e.message });
-      // 失敗時は .bak から復元して現状維持
-      if (existsSync(absPath + '.bak')) {
-        copyFileSync(absPath + '.bak', absPath);
-      }
     }
   }
 

@@ -22,7 +22,7 @@ describe('05-apply: Phase 3', () => {
     ]
   };
 
-  it('登記された nodeId は React file を .bak バックアップ後に上書き', async () => {
+  it('登記された nodeId は React file を直接上書き（.bak なし、rollback は git 側）', async () => {
     const targetPath = join(testRoot, 'src/app/index.tsx');
     writeFileSync(targetPath, 'export default function Home() { return <div>old</div>; }');
 
@@ -38,9 +38,8 @@ describe('05-apply: Phase 3', () => {
     });
 
     expect(result.changedFiles).toContain('src/app/index.tsx');
-    expect(existsSync(targetPath + '.bak')).toBe(true);
+    expect(existsSync(targetPath + '.bak')).toBe(false);
     expect(readFileSync(targetPath, 'utf-8')).toContain('new');
-    expect(readFileSync(targetPath + '.bak', 'utf-8')).toContain('old');
   });
 
   it('未登記の nodeId は unregistered warning に載せて file 触らない', async () => {
