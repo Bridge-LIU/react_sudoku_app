@@ -24,6 +24,7 @@ import { runDiff } from './02-diff.mjs';
 import { runFallback } from './03-fallback.mjs';
 import { fetchDetail } from './04-detail.mjs';
 import { applyChanges } from './05-apply.mjs';
+import { takeScreenshots } from './06-screenshot.mjs';
 import { runTests } from './07-test.mjs';
 import { generateReport } from './08-report.mjs';
 
@@ -31,7 +32,8 @@ import { generateReport } from './08-report.mjs';
 function parseArgs(argv) {
   const args = {
     headFile: null, diffFile: null, treeFile: null, jsxFile: null,
-    dryRun: false, confirm: null, noCommit: false, skipTests: true, skipReport: false
+    dryRun: false, confirm: null, noCommit: false,
+    skipTests: true, skipReport: false, skipScreenshot: true
   };
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -43,6 +45,7 @@ function parseArgs(argv) {
     else if (arg === '--no-commit') args.noCommit = true;
     else if (arg === '--run-tests') args.skipTests = false;
     else if (arg === '--skip-report') args.skipReport = true;
+    else if (arg === '--run-screenshot') args.skipScreenshot = false;
     else if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--help' || arg === '-h') {
       console.log(`Usage: node scripts/run.mjs --head-file <path> [--diff-file <path>] [--tree-file <path>] [--jsx-file <path>] [--confirm yes|no] [--no-commit] [--dry-run]`);
@@ -52,6 +55,7 @@ function parseArgs(argv) {
 --no-commit: Phase 8 の git commit を skip（テスト用、state 更新は実行）
 --run-tests: Phase 5 (npm test / e2e / audit) を実行（デフォルトは skip、時間かかる）
 --skip-report: Phase 6 (Excel 報告書) を skip（デフォルトは実行、Python + openpyxl 必要）
+--run-screenshot: Phase 4 (Playwright screenshot) を実行（デフォルトは skip、dev server 事前起動必要、現状 簡易版）
 --dry-run: state/snapshot/file 全て書き換えない`);
       process.exit(0);
     }
@@ -292,8 +296,22 @@ async function runPhases3to9({
   }
   writeFileSync(join(runsDir, 'apply.json'), JSON.stringify(applyRes, null, 2), 'utf-8');
 
-  // Phase 4: STUB
-  console.log(`[Phase 4] SKIP — screenshot (Playwright + dev server) 未統合`);
+  // Phase 4: screenshot
+  if (args.skipScreenshot) {
+    console.log(`[Phase 4] SKIP — --run-screenshot 未指定`);
+  } else if (applyRes.changedFiles.length === 0) {
+    console.log(`[Phase 4] SKIP — changedFiles 空`);
+  } else {
+    console.log(`[Phase 4] Playwright で screenshot 撮影中...（dev server 事前起動前提、現状 簡易版）`);
+    try {
+      const shotRes = await takeScreenshots({
+        config, changedFiles: applyRes.changedFiles, runDir: runsDir
+      });
+      console.log(`[Phase 4] ✅ ${shotRes.screenshots.length} 枚 → ${shotRes.outDir}`);
+    } catch (e) {
+      console.error(`[Phase 4] ⚠️ 撮影失敗（${e.message.slice(0, 150)}）— Phase 5 は続行`);
+    }
+  }
 
   // Phase 5: tests
   let testResults = null;
