@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "id": "1894149162",
+      "uuid": "16a25114-9fe0-45ff-aa8b-5eb4f5613b71",
+      "file_key": "cwmewA4MTWktw6E7uhQFK2",
+      "parent_id": "",
+      "user": {
+        "handle": "Kurihara Naoko",
+        "id": "580619817007295479"
+      },
+      "created_at": "2026-08-21T00:17:42.213Z",
+      "resolved_at": null,
+      "message": "删除掉这个文本，如果识别并删除了，claude code 返回提示已删除",
+      "client_meta": {
+        "node_id": "228:2",
+        "node_offset": { "x": 594, "y": 23 },
+        "stable_path": ["228:2"]
+      },
+      "order_id": "26"
+    },
+    {
+      "id": "1873825754",
+      "uuid": "aae4739b-2fce-48ac-bbcb-be865d77acff",
+      "file_key": "cwmewA4MTWktw6E7uhQFK2",
+      "parent_id": "",
+      "user": { "handle": "BridgeLIU", "id": "1664564066744161764" },
+      "created_at": "2026-08-06T03:49:24.896Z",
+      "resolved_at": null,
+      "message": "test",
+      "client_meta": {
+        "node_id": "0:1",
+        "node_offset": { "x": 3171, "y": 1417 },
+        "stable_path": ["0:1"]
+      },
+      "order_id": "23"
+    },
+    {
+      "id": "1873826679",
+      "uuid": "817355a9-6acf-401b-961c-6ec436d08915",
+      "file_key": "cwmewA4MTWktw6E7uhQFK2",
+      "parent_id": "1873825754",
+      "user": { "handle": "BridgeLIU", "id": "1664564066744161764" },
+      "created_at": "2026-08-06T03:50:43.154Z",
+      "resolved_at": null,
+      "message": "reply-1",
+      "client_meta": null,
+      "order_id": null
+    },
+    {
+      "id": "9999999001",
+      "uuid": "resolved-example-uuid",
+      "file_key": "cwmewA4MTWktw6E7uhQFK2",
+      "parent_id": "",
+      "user": { "handle": "SomeUser", "id": "9999" },
+      "created_at": "2026-08-01T00:00:00.000Z",
+      "resolved_at": "2026-08-02T00:00:00.000Z",
+      "message": "already-resolved-should-be-hidden",
+      "client_meta": {
+        "node_id": "11:1896",
+        "node_offset": { "x": 0, "y": 0 },
+        "stable_path": ["11:1896"]
+      },
+      "order_id": "10"
+    }
+  ]
+}
