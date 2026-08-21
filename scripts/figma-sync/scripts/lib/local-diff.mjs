@@ -1,11 +1,23 @@
 function flatten(snapshot) {
   const map = new Map();
-  if (!snapshot || !snapshot.document) return map;
+  if (!snapshot) return map;
+
+  const trees = [];
+  if (snapshot.document) {
+    trees.push(snapshot.document);
+  } else if (snapshot.nodes && typeof snapshot.nodes === 'object') {
+    for (const wrapper of Object.values(snapshot.nodes)) {
+      if (wrapper && wrapper.document) trees.push(wrapper.document);
+    }
+  }
+
   function walk(node) {
+    if (!node || !node.id) return;
     map.set(node.id, node);
     if (Array.isArray(node.children)) node.children.forEach(walk);
   }
-  walk(snapshot.document);
+
+  for (const tree of trees) walk(tree);
   return map;
 }
 
