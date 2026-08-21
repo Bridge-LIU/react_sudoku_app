@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """Usage: python 06-report.py <run-dir>
 
-v11 (figma-sync 専用 6 sheet) 対応。run_dir 直下の各 phase 出力 + 現行 state /
-config / git log を集約して ExcelFillContext を構築、excel_fill.fill_report で
-report.xlsx を出力する。
+v11.3 (7 sheet, テンプレファイル不要) 対応。run_dir 直下の各 phase 出力 + 現行
+state / config / git log を集約して ExcelFillContext を構築、excel_fill.fill_report
+で report.xlsx を code from scratch で生成する。
 """
 import json
 import subprocess
@@ -11,7 +11,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from scripts.lib.excel_fill import fill_report, ExcelFillContext  # noqa: E402
+from scripts.lib.excel_fill import (  # noqa: E402
+    fill_report, ExcelFillContext, normalize_variables_payload,
+)
 
 
 def _load_json(path: Path, default):
@@ -148,11 +150,6 @@ def main():
         sys.exit(1)
     run_dir = Path(sys.argv[1])
     root = Path(__file__).parent.parent
-    template = root / 'templates' / 'sudoku_figma-sync実施報告書_2026-08-21_v11.xlsx'
-
-    if not template.exists():
-        print(f'[06-report] ❌ Template not found: {template}', file=sys.stderr)
-        sys.exit(1)
 
     # ── inputs ──
     config = _load_json(root / 'config.json', {})
@@ -189,8 +186,18 @@ def main():
     fallback_info = _load_json(run_dir / 'fallback.log', {})
     fallback_triggered = bool(fallback_info) and bool(fallback_info.get('fallbackStatus'))
 
+    # ── Variables map (v11.2) ──
+    # figma_get_variables の生データ (REST 形式) を Skill 側が run_dir/variables.json に
+    # 保存している前提。ファイル無し / 破損時は空 map → Excel は raw ID + (未解決) 表示に degradation
+    variables_raw = _load_json(run_dir / 'variables.json', {})
+    variables_map = normalize_variables_payload(variables_raw)
+    if variables_map:
+        print(f'[06-report] variables_map loaded: {len(variables_map)} entries', file=sys.stderr)
+    else:
+        print('[06-report] variables_map is empty — VariableID は raw で表示', file=sys.stderr)
+
     ctx = ExcelFillContext(
-        template_path=str(template),
+        template_path='',  # v11.3: テンプレファイル不要 (code from scratch)
         output_path=str(run_dir / 'report.xlsx'),
         run_ts=run_dir.name.replace('_', ' '),
         test_results=test_results,
@@ -205,6 +212,7 @@ def main():
         final_status=status,
         fallback_triggered=fallback_triggered,
         fallback_info=fallback_info,
+        variables_map=variables_map,
     )
     fill_report(ctx)
     print(f'Generated {ctx.output_path}')

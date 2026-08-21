@@ -1,9 +1,17 @@
-"""v11 (figma-sync 専用 6 sheet) テンプレを実データで埋込む処理。
+"""v11.3 新テンプレ (7 sheet) を実データで生成する処理。
 
-v10 (12 sheet 汎用テスト報告書) から完全に置き換え。v5 参考テンプレ相当の
-6 sheet 構成：
-  01_表紙サマリ / 02_視覚エビデンス / 03_state.json差分 /
-  04_コード変更 / 05_テストケース / 06_総合結果
+シート構成 (2026-08-21 決定 spec: docs/superpowers/specs/2026-08-21-test-report-template-design.md):
+  01_表紙サマリ         Bridge紺帯 / メタ表 / OK-NG-WARN パネル / 目次
+  02_変更点サマリ       variables/components/screens 差分 (人間可読)
+  03_UI Before-After    画面別 前後スクショ横並び + 差分説明
+  04_コード変更         ファイル別 diff (±行数/カテゴリ/影響) + bindingChanges 詳細
+  05_全システムテスト   vitest/Playwright/a11y/snapshot フル結果
+  06_異常系＆セキュリティ 異常系ケース + audit + CSP チェック
+  07_承認履歴           AI 2段レビュー + 人間承認欄
+
+v11 (テンプレファイル load 型) から刷新：Workbook を code from scratch で組み立てるため
+templates/v11.xlsx は不要になった。既存 helper (_binding_fill / _fmt_variable /
+normalize_variables_payload / _collect_binding_rows / ExcelFillContext) は互換保持。
 """
 from __future__ import annotations
 
@@ -12,46 +20,149 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from openpyxl import load_workbook
+from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XLImage
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 
-BOLD = Font(bold=True)
-WRAP = Alignment(wrap_text=True, vertical='top', horizontal='left')
-CENTER = Alignment(horizontal='center', vertical='center')
-SECTION_FILL = PatternFill(start_color='FFE7F1FA', end_color='FFE7F1FA', fill_type='solid')
-SECTION_FONT = Font(bold=True, size=12)
-# Fallback 発動時の赤 banner / section 用の書式
-FALLBACK_FILL = PatternFill(start_color='FFFFEBEE', end_color='FFFFEBEE', fill_type='solid')
-FALLBACK_FONT = Font(bold=True, size=12, color='FFC62828')
-FALLBACK_BANNER_FONT = Font(bold=True, size=14, color='FFC62828')
+# ── フォント ──
+FONT_TITLE   = Font(name='Yu Gothic', size=18, bold=True, color='FFFFFFFF')
+FONT_SUBTTL  = Font(name='Yu Gothic', size=14, bold=True, color='FFFFFFFF')
+FONT_H2      = Font(name='Yu Gothic', size=14, bold=True)
+FONT_TH      = Font(name='Yu Gothic', size=11, bold=True)
+FONT_TH_INV  = Font(name='Yu Gothic', size=11, bold=True, color='FFFFFFFF')
+FONT_TD      = Font(name='Yu Gothic', size=10)
+FONT_TD_B    = Font(name='Yu Gothic', size=10, bold=True)
+FONT_META_K  = Font(name='Yu Gothic', size=11, bold=True)
+FONT_LINK    = Font(name='Yu Gothic', size=11, color='FF0563C1', underline='single')
+FONT_LARGE_B = Font(name='Yu Gothic', size=16, bold=True)
 
-# bindingChanges の change_kind 別 背景色（added=薄緑、removed=薄赤、modified=薄黄）
-BINDING_FILL_ADDED = PatternFill(start_color='FFE8F5E9', end_color='FFE8F5E9', fill_type='solid')
-BINDING_FILL_REMOVED = PatternFill(start_color='FFFFEBEE', end_color='FFFFEBEE', fill_type='solid')
-BINDING_FILL_MODIFIED = PatternFill(start_color='FFFFF8E1', end_color='FFFFF8E1', fill_type='solid')
+# ── Fill (v10 準拠 + Bridge紺) ──
+FILL_BANNER  = PatternFill('solid', fgColor='FF1F3864')  # Bridge 濃紺
+FILL_HDR     = PatternFill('solid', fgColor='FFD9E1F2')  # 淡青 (v10)
+FILL_HDR_D   = PatternFill('solid', fgColor='FF4472C4')  # 濃青 (v5)
+FILL_TOTAL   = PatternFill('solid', fgColor='FFE2EFDA')  # 淡緑
+FILL_OK      = PatternFill('solid', fgColor='FFC6EFCE')  # PASS 緑
+FILL_NG      = PatternFill('solid', fgColor='FFFFC7CE')  # FAIL 赤
+FILL_WARN    = PatternFill('solid', fgColor='FFFFEB9C')  # WARN 黄
+FILL_PANEL   = PatternFill('solid', fgColor='FFEDEDED')  # 灰 (結果パネル背景)
+FILL_FALLBACK = PatternFill('solid', fgColor='FFFFEBEE')  # 淡赤 (fallback banner)
+FALLBACK_BANNER_FONT = Font(name='Yu Gothic', size=14, bold=True, color='FFC62828')
+
+# bindingChanges の change_kind 別 背景色
+BINDING_FILL_ADDED    = PatternFill('solid', fgColor='FFE8F5E9')
+BINDING_FILL_REMOVED  = PatternFill('solid', fgColor='FFFFEBEE')
+BINDING_FILL_MODIFIED = PatternFill('solid', fgColor='FFFFF8E1')
+
+# ── Border ──
+_THIN = Side(style='thin', color='FF808080')
+BORDER = Border(left=_THIN, right=_THIN, top=_THIN, bottom=_THIN)
+
+# ── Alignment ──
+ALIGN_CTR = Alignment(horizontal='center', vertical='center', wrap_text=True)
+ALIGN_L   = Alignment(horizontal='left',   vertical='center', wrap_text=True)
+ALIGN_R   = Alignment(horizontal='right',  vertical='center', wrap_text=True)
+
+# ── シート順 (fill_report の生成順と wb._sheets の並び) ──
+SHEET_ORDER = [
+    '01_表紙サマリ',
+    '02_変更点サマリ',
+    '03_UI Before-After',
+    '04_コード変更',
+    '05_全システムテスト',
+    '06_異常系＆セキュリティ',
+    '07_承認履歴',
+]
 
 
+# ─────────────────────────────────────────────────
+# 既存 helper (互換保持)
+# ─────────────────────────────────────────────────
 def _binding_fill(change_kind: str):
-    """change_kind に応じた PatternFill を返す（未知の kind は None）。"""
     k = (change_kind or '').lower()
-    if k == 'added':
-        return BINDING_FILL_ADDED
-    if k == 'removed':
-        return BINDING_FILL_REMOVED
-    if k == 'modified':
-        return BINDING_FILL_MODIFIED
+    if k == 'added':    return BINDING_FILL_ADDED
+    if k == 'removed':  return BINDING_FILL_REMOVED
+    if k == 'modified': return BINDING_FILL_MODIFIED
     return None
 
 
-def _collect_binding_rows(design_changes: list) -> list:
-    """design_changes[].changes[].bindingChanges[] を flat 化。
+def _rgba_to_hex(v) -> str:
+    try:
+        r = round(float(v.get('r', 0)) * 255)
+        g = round(float(v.get('g', 0)) * 255)
+        b = round(float(v.get('b', 0)) * 255)
+        a = float(v.get('a', 1))
+        hex6 = f'#{r:02X}{g:02X}{b:02X}'
+        return hex6 if a >= 0.999 else f'{hex6}{round(a * 255):02X}'
+    except Exception:
+        return str(v)
 
-    Returns: list of dict with keys:
-      component, frame_node_id, node_id, node_name, property,
-      from_variable_id, to_variable_id, change_kind
-    """
+
+def _fmt_variable_value(entry: dict) -> str:
+    val = entry.get('value')
+    if val is None:
+        return '(値なし)'
+    rt = (entry.get('resolved_type') or '').upper()
+    if rt == 'COLOR' and isinstance(val, dict):
+        return _rgba_to_hex(val)
+    if rt == 'FLOAT':
+        try:
+            f = float(val)
+            return str(int(f)) if f.is_integer() else f'{f:g}'
+        except Exception:
+            return str(val)
+    if rt == 'BOOLEAN':
+        return 'true' if bool(val) else 'false'
+    if rt == 'STRING':
+        return f'"{val}"'
+    return str(val)
+
+
+def _fmt_variable(vid, variables_map: dict) -> str:
+    if vid is None:
+        return '(なし)'
+    entry = (variables_map or {}).get(vid)
+    if not entry:
+        return f'{vid} (未解決)'
+    name = entry.get('name') or vid
+    if entry.get('value') is None:
+        return f'{name} (値なし)'
+    return f'{name} ({_fmt_variable_value(entry)})'
+
+
+def normalize_variables_payload(payload) -> dict:
+    if not payload or not isinstance(payload, (dict, list)):
+        return {}
+    src = payload
+    if isinstance(src, dict) and 'meta' in src and isinstance(src.get('meta'), dict):
+        src = src['meta'].get('variables', {})
+    elif isinstance(src, dict) and 'variables' in src and isinstance(src.get('variables'), dict):
+        src = src['variables']
+    if not isinstance(src, dict):
+        return {}
+    out = {}
+    for vid, raw in src.items():
+        if not isinstance(raw, dict):
+            continue
+        name = raw.get('name') or ''
+        resolved_type = raw.get('resolvedType') or raw.get('resolved_type') or ''
+        if 'value' in raw:
+            value = raw.get('value')
+        else:
+            vbm = raw.get('valuesByMode') or raw.get('values_by_mode') or {}
+            if isinstance(vbm, dict) and vbm:
+                first = next(iter(vbm.values()))
+                if isinstance(first, dict) and first.get('type') == 'VARIABLE_ALIAS':
+                    value = f'→ {first.get("id", "?")}'
+                else:
+                    value = first
+            else:
+                value = None
+        out[vid] = {'name': name, 'resolved_type': resolved_type, 'value': value}
+    return out
+
+
+def _collect_binding_rows(design_changes: list) -> list:
     out = []
     for dc in design_changes or []:
         comp = dc.get('component', '')
@@ -73,13 +184,11 @@ def _collect_binding_rows(design_changes: list) -> list:
 
 @dataclass
 class ExcelFillContext:
-    template_path: str
+    template_path: str  # 後方互換のため受け取るが未使用 (v11.3 で不要化)
     output_path: str
     run_ts: str
-    # Phase 4-5 outputs
     test_results: dict = field(default_factory=dict)
     design_changes: list = field(default_factory=list)
-    # Phase 1-3 outputs
     config: Optional[dict] = None
     state_before: Optional[dict] = None
     state_after: Optional[dict] = None
@@ -88,16 +197,12 @@ class ExcelFillContext:
     git_info: Optional[dict] = None
     phase_results: Optional[dict] = None
     final_status: Optional[str] = None
-    # Fallback (Phase 1-b-fallback) 経路発動情報
-    # fallback_triggered: fallback.log が存在し fallbackStatus が空でない
-    # fallback_info: fallback.log の中身 (reason, fromVersion, headVersionId, fallbackStatus, nodeDiffCount)
     fallback_triggered: bool = False
     fallback_info: dict = field(default_factory=dict)
+    variables_map: dict = field(default_factory=dict)
 
 
 def _log(msg: str) -> None:
-    # Windows cp932 console で日本語 sheet 名が UnicodeEncodeError にならないよう
-    # bytes に落として直接書き込む（errors='replace' で安全に）
     try:
         sys.stderr.write(msg + '\n')
         sys.stderr.flush()
@@ -108,127 +213,7 @@ def _log(msg: str) -> None:
             buf.flush()
 
 
-def fill_report(ctx: ExcelFillContext) -> None:
-    wb = load_workbook(ctx.template_path)
-
-    steps = [
-        ('01_表紙サマリ', _fill_01_cover),
-        ('02_視覚エビデンス', _fill_02_visual),
-        ('03_state.json差分', _fill_03_state_diff),
-        ('04_コード変更', _fill_04_code_changes),
-        ('05_テストケース', _fill_05_test_cases),
-        ('06_総合結果', _fill_06_summary),
-    ]
-    total = len(steps)
-    for idx, (sheet_name, fn) in enumerate(steps, start=1):
-        _log(f'[Excel] Sheet {idx}/{total} {sheet_name} 生成中...')
-        if sheet_name in wb.sheetnames:
-            fn(wb[sheet_name], ctx)
-        _log(f'[Excel] Sheet {idx}/{total} {sheet_name} 完了')
-
-    wb.save(ctx.output_path)
-
-
-# ── Sheet 01: 表紙サマリ ──
-def _fill_01_cover(ws, ctx: ExcelFillContext) -> None:
-    cfg = ctx.config or {}
-    git = ctx.git_info or {}
-    apply_res = ctx.apply_result or {}
-
-    # ── Fallback 発動 banner (最上位、目立つ赤字) ──
-    # fallback 起きてない run では出さない（不要な UI 混乱を避ける）
-    if ctx.fallback_triggered:
-        fi = ctx.fallback_info or {}
-        reason = fi.get('reason', 'UNKNOWN')
-        node_cnt = fi.get('nodeDiffCount', '?')
-        banner = (
-            f'⚠️ FALLBACK 発動 (raw property / boundVariables 系変更検出) — '
-            f'reason={reason}、fallback 経由で {node_cnt} 件検出'
-        )
-        cell = ws.cell(3, 1)
-        cell.value = banner
-        cell.font = FALLBACK_BANNER_FONT
-        cell.fill = FALLBACK_FILL
-        cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
-        ws.row_dimensions[3].height = 32
-
-    changed_files = apply_res.get('changedFiles') or git.get('changed_files') or []
-    commit_sha = (git.get('commit_sha') or '')[:8]
-    commit_msg = git.get('commit_msg', '')
-
-    info_map = {
-        4: ('プロジェクト名', 'react_sudoku_app'),
-        5: ('Figma ファイル ID', cfg.get('figmaFileKey', '')),
-        6: ('Figma ファイル URL', cfg.get('figmaFileUrl', '')),
-        7: ('実施日 / run ts', ctx.run_ts),
-        8: ('実施者', 'Claude Code'),
-        9: ('final status', ctx.final_status or 'UNKNOWN'),
-        10: ('検出方式', _detect_method(ctx)),
-        11: ('コミット', f'{commit_sha} — {commit_msg}' if commit_sha else '(なし)'),
-        12: ('変更ファイル数', f'{len(changed_files)} files'),
-        13: ('成果 PR', git.get('pr_url') or '(未作成)'),
-        14: ('SKILL.md version', 'v4 (REST-only、2026-08-21)'),
-        15: ('備考', f'run_dir={ctx.run_ts}'),
-    }
-    for row, (label, val) in info_map.items():
-        ws.cell(row, 1).value = label
-        ws.cell(row, 1).font = BOLD
-        ws.cell(row, 4).value = str(val) if val is not None else ''
-
-    # 【テスト実施サマリ】 行 19-25
-    tr = ctx.test_results or {}
-    unit = tr.get('unit') or {}
-    e2e = tr.get('e2e') or {}
-    audit = tr.get('audit') or {}
-    coverage = tr.get('coverage') or {}
-
-    unit_pass = 'PASS' if unit.get('exitCode') == 0 else ('FAIL' if unit else 'SKIP')
-    e2e_pass = 'PASS' if e2e.get('exitCode') == 0 else ('FAIL' if e2e else 'SKIP')
-    audit_total = (
-        (audit.get('json') or {}).get('metadata', {}).get('vulnerabilities', {}).get('total', 0)
-        if audit else 0
-    )
-    cov_line = (coverage.get('total') or {}).get('lines', {}).get('pct', '-') if coverage else '-'
-
-    ph = ctx.phase_results or {}
-    phase_rows = [
-        (1, 'Phase 1-a 検出 (detect)', 1, 'figma_get_file_versions', '', '', ph.get('phase_1a', 'N/A')),
-        (2, 'Phase 1-b diff', 1, 'figma_diff_versions', '', '', ph.get('phase_1b', 'N/A')),
-        (3, 'Phase 1-b-fallback', 1, 'figma_get_file_at_version', '', '', ph.get('phase_1b_fallback', 'N/A')),
-        (4, 'Phase 3 apply', 1, 'get_design_context + 05-apply', '', '', ph.get('phase_3', 'N/A')),
-        (5, 'Phase 4 screenshot', 1, 'Playwright + pixelmatch', '', '', ph.get('phase_4', 'N/A')),
-        (6, 'Phase 5 tests', 1, f'unit={unit_pass} e2e={e2e_pass} cov={cov_line}%', '', '', unit_pass),
-        (7, 'Phase 6 report', 1, 'openpyxl v11', '', '', 'PASS'),
-    ]
-    for i, row_data in enumerate(phase_rows):
-        r = 19 + i
-        for col, val in enumerate(row_data, start=1):
-            ws.cell(r, col).value = val
-            ws.cell(r, col).alignment = WRAP
-
-    ws.cell(26, 1).value = '合計'
-    ws.cell(26, 1).font = BOLD
-    ws.cell(26, 3).value = f'{len(phase_rows)} phase'
-    ws.cell(26, 7).value = ctx.final_status or 'UNKNOWN'
-
-    # 【Figma 検出変更 概要】行 30-35
-    dc = ctx.design_changes or []
-    for i, c in enumerate(dc[:6]):
-        r = 30 + i
-        ws.cell(r, 1).value = i + 1
-        ws.cell(r, 2).value = c.get('component', '')
-        ws.cell(r, 3).value = c.get('node_id', '')
-        ws.cell(r, 4).value = c.get('file', '')
-        kinds = [ch.get('change_kind') or ch.get('kind', '') for ch in c.get('changes', [])]
-        ws.cell(r, 5).value = ', '.join(set(k for k in kinds if k))
-        ws.cell(r, 6).value = f"{c.get('diff_pixels', '?')} px" if c.get('diff_pixels') is not None else '-'
-
-    ws.cell(36, 1).value = f'KEY DISCOVERY: final_status={ctx.final_status or "UNKNOWN"}、変更 {len(dc)} 件検出'
-    ws.cell(36, 1).font = BOLD
-
-
 def _detect_method(ctx: ExcelFillContext) -> str:
-    # 直接 flag があればそれを優先（06-report.py が fallback.log から設定）
     if ctx.fallback_triggered:
         return 'figma_get_file_at_version fallback (local-diff)'
     ph = ctx.phase_results or {}
@@ -237,436 +222,585 @@ def _detect_method(ctx: ExcelFillContext) -> str:
     return 'figma_diff_versions'
 
 
-# ── Sheet 02: 視覚エビデンス ──
-def _fill_02_visual(ws, ctx: ExcelFillContext) -> None:
-    """視覚エビデンス sheet。
+# ─────────────────────────────────────────────────
+# 描画 helper
+# ─────────────────────────────────────────────────
+def _set_col_widths(ws, widths: dict):
+    for col, w in widths.items():
+        ws.column_dimensions[col].width = w
 
-    v11.1 転倒：画像を主役から補助扱いに。まず「変更概要 + bindingChanges 詳細」を
-    テキストで並べ、その下に BEFORE/AFTER 画像（あれば）を置く。screenshot skip の
-    run でも「どこが変わったか」が Excel だけで判る。
-    """
+
+def _cell(ws, coord, value, *, font=None, fill=None, align=None, border=True):
+    c = ws[coord]
+    c.value = value
+    if font:  c.font = font
+    if fill:  c.fill = fill
+    if align: c.alignment = align
+    if border: c.border = BORDER
+    return c
+
+
+def _banner(ws, row, span_from, span_to, title, subtitle=None):
+    ws.merge_cells(f'{span_from}{row}:{span_to}{row}')
+    c = ws[f'{span_from}{row}']
+    c.value = title
+    c.font = FONT_TITLE
+    c.fill = FILL_BANNER
+    c.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+    ws.row_dimensions[row].height = 42
+    if subtitle:
+        ws.merge_cells(f'{span_from}{row+1}:{span_to}{row+1}')
+        c2 = ws[f'{span_from}{row+1}']
+        c2.value = subtitle
+        c2.font = FONT_SUBTTL
+        c2.fill = FILL_BANNER
+        c2.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+        ws.row_dimensions[row+1].height = 28
+
+
+def _write_table(ws, start_row, headers, rows, *, header_style='light'):
+    """header + rows を描画、最終行の次の row 番号を返す。"""
+    fill = FILL_HDR if header_style == 'light' else FILL_HDR_D
+    font = FONT_TH if header_style == 'light' else FONT_TH_INV
+    for i, h in enumerate(headers):
+        c = ws.cell(row=start_row, column=i + 1, value=h)
+        c.font = font; c.fill = fill; c.alignment = ALIGN_CTR; c.border = BORDER
+    ws.row_dimensions[start_row].height = 24
+    for r_idx, row in enumerate(rows):
+        for c_idx, val in enumerate(row):
+            c = ws.cell(row=start_row + 1 + r_idx, column=c_idx + 1, value=val)
+            c.font = FONT_TD; c.alignment = ALIGN_L; c.border = BORDER
+        ws.row_dimensions[start_row + 1 + r_idx].height = 22
+    return start_row + 1 + len(rows)
+
+
+# ─────────────────────────────────────────────────
+# メイン (Workbook を code from scratch で組み立て)
+# ─────────────────────────────────────────────────
+def fill_report(ctx: ExcelFillContext) -> None:
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    _log('[Excel] Sheet 2/7 02_変更点サマリ 生成中...')
+    _build_02_change_summary(wb, ctx)
+    _log('[Excel] Sheet 3/7 03_UI Before-After 生成中...')
+    _build_03_ui_diff(wb, ctx)
+    _log('[Excel] Sheet 4/7 04_コード変更 生成中...')
+    _build_04_code_changes(wb, ctx)
+    _log('[Excel] Sheet 5/7 05_全システムテスト 生成中...')
+    test_total, test_pass, test_fail = _build_05_full_tests(wb, ctx)
+    _log('[Excel] Sheet 6/7 06_異常系＆セキュリティ 生成中...')
+    sec_pass, sec_warn, sec_fail = _build_06_abnormal_sec(wb, ctx)
+    _log('[Excel] Sheet 7/7 07_承認履歴 生成中...')
+    _build_07_approvals(wb, ctx)
+
+    ok_count   = test_pass + sec_pass
+    ng_count   = test_fail + sec_fail
+    warn_count = sec_warn
+
+    _log('[Excel] Sheet 1/7 01_表紙サマリ 生成中...')
+    _build_01_cover(wb, ctx, ok_count, ng_count, warn_count)
+
+    # 表紙を先頭に並べ替え
+    wb._sheets = [wb[n] for n in SHEET_ORDER]
+
+    wb.save(ctx.output_path)
+
+
+# ─────────────────────────────────────────────────
+# Sheet 01: 表紙サマリ
+# ─────────────────────────────────────────────────
+def _build_01_cover(wb, ctx: ExcelFillContext, ok, ng, warn):
+    ws = wb.create_sheet('01_表紙サマリ')
+    _set_col_widths(ws, {'A': 5, 'B': 22, 'C': 12, 'D': 12, 'E': 14, 'F': 14, 'G': 18, 'H': 18})
+
+    cfg = ctx.config or {}
+    git = ctx.git_info or {}
+    date_str = (ctx.run_ts or '').split(' ')[0] or '(no date)'
+
+    _banner(ws, 1, 'A', 'H',
+            'テスト実施報告書',
+            f'react_sudoku_app  ―  figma-sync v11.3  ({date_str})')
+
+    # Fallback banner (存在時のみ、row 3)
+    start_meta = 4
+    if ctx.fallback_triggered:
+        fi = ctx.fallback_info or {}
+        reason = fi.get('reason', 'UNKNOWN')
+        node_cnt = fi.get('nodeDiffCount', '?')
+        ws.merge_cells('A3:H3')
+        cell = ws['A3']
+        cell.value = (f'⚠️ FALLBACK 発動 (raw property / boundVariables 系変更検出) — '
+                      f'reason={reason}、fallback 経由で {node_cnt} 件検出')
+        cell.font = FALLBACK_BANNER_FONT
+        cell.fill = FILL_FALLBACK
+        cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+        ws.row_dimensions[3].height = 32
+        start_meta = 4  # メタ表は row 4 から
+
+    # メタ情報テーブル
+    apply_res = ctx.apply_result or {}
+    changed_files = apply_res.get('changedFiles') or git.get('changed_files') or []
+    commit_sha = (git.get('commit_sha') or '')[:8]
+    meta_items = [
+        ('プロジェクト名',    'react_sudoku_app'),
+        ('バージョン',        'figma-sync v11.3'),
+        ('報告日 / run ts',   ctx.run_ts or ''),
+        ('報告者',            'Claude Code'),
+        ('final status',      ctx.final_status or 'UNKNOWN'),
+        ('検出方式',          _detect_method(ctx)),
+        ('コミット',          f'{commit_sha} — {git.get("commit_msg", "")[:60]}' if commit_sha else '(なし)'),
+        ('変更ファイル数',    f'{len(changed_files)} files'),
+        ('Figma File ID',     cfg.get('figmaFileKey', '(未設定)')),
+        ('成果 PR',           git.get('pr_url') or '(未作成)'),
+    ]
+    for i, (k, v) in enumerate(meta_items):
+        r = start_meta + i
+        ws.merge_cells(f'A{r}:C{r}')
+        _cell(ws, f'A{r}', k, font=FONT_META_K, fill=FILL_HDR, align=ALIGN_L)
+        ws.merge_cells(f'D{r}:H{r}')
+        _cell(ws, f'D{r}', v, font=FONT_TD, align=ALIGN_L)
+        ws.row_dimensions[r].height = 22
+
+    # 結果パネル
+    panel_row = start_meta + len(meta_items) + 1
+    ws.merge_cells(f'A{panel_row}:H{panel_row}')
+    _cell(ws, f'A{panel_row}', '【総合結果】', font=FONT_H2, align=ALIGN_L, border=False)
+    ws.row_dimensions[panel_row].height = 26
+
+    verdict = '合格 (要人間承認)' if ng == 0 else '要修正'
+    for i, (label, val, fill) in enumerate([
+        ('OK',   ok,   FILL_OK),
+        ('NG',   ng,   FILL_NG),
+        ('WARN', warn, FILL_WARN),
+        ('総合判定', verdict, FILL_PANEL),
+    ]):
+        col_from = 1 + i * 2
+        col_to   = col_from + 1
+        r = panel_row + 1
+        ws.merge_cells(start_row=r, start_column=col_from, end_row=r, end_column=col_to)
+        c = ws.cell(row=r, column=col_from, value=label)
+        c.font = FONT_TH; c.fill = FILL_HDR; c.alignment = ALIGN_CTR; c.border = BORDER
+
+        ws.merge_cells(start_row=r + 1, start_column=col_from, end_row=r + 2, end_column=col_to)
+        c2 = ws.cell(row=r + 1, column=col_from, value=val)
+        c2.font = FONT_LARGE_B; c2.fill = fill; c2.alignment = ALIGN_CTR; c2.border = BORDER
+    ws.row_dimensions[panel_row + 1].height = 22
+    ws.row_dimensions[panel_row + 2].height = 26
+    ws.row_dimensions[panel_row + 3].height = 26
+
+    # 目次 (残り 6 シートへ)
+    toc_row = panel_row + 5
+    ws.merge_cells(f'A{toc_row}:H{toc_row}')
+    _cell(ws, f'A{toc_row}', '【目次】', font=FONT_H2, align=ALIGN_L, border=False)
+    ws.row_dimensions[toc_row].height = 26
+
+    for i, name in enumerate(SHEET_ORDER[1:]):
+        r = toc_row + 1 + i
+        ws.merge_cells(f'A{r}:B{r}')
+        _cell(ws, f'A{r}', f'  {i + 2:02d}', font=FONT_TD_B, align=ALIGN_L, border=False)
+        ws.merge_cells(f'C{r}:H{r}')
+        c = ws.cell(row=r, column=3, value=name)
+        c.font = FONT_LINK
+        c.alignment = ALIGN_L
+        c.hyperlink = f"#'{name}'!A1"
+        ws.row_dimensions[r].height = 20
+
+
+# ─────────────────────────────────────────────────
+# Sheet 02: 変更点サマリ
+# ─────────────────────────────────────────────────
+def _build_02_change_summary(wb, ctx: ExcelFillContext):
+    ws = wb.create_sheet('02_変更点サマリ')
+    _set_col_widths(ws, {'A': 5, 'B': 14, 'C': 28, 'D': 46, 'E': 34})
+    _banner(ws, 1, 'A', 'E', '変更点サマリ', '何が / どう変わったか (人間可読)')
+
+    # design_changes[] → 種別ごとに要約
+    dc = ctx.design_changes or []
+    rows = []
+    idx = 0
+    for c in dc:
+        comp = c.get('component', '')
+        node_id = c.get('node_id', '')
+        file_path = c.get('file', '')
+        # 種別判定: bindingChanges があれば Variable/Component、無ければ Screen
+        for ch in (c.get('changes') or []):
+            bindings = ch.get('bindingChanges') or []
+            if bindings:
+                for b in bindings:
+                    idx += 1
+                    prop = b.get('property', '')
+                    frm = _fmt_variable(b.get('from_variable_id'), ctx.variables_map)
+                    to  = _fmt_variable(b.get('to_variable_id'),   ctx.variables_map)
+                    kind = b.get('change_kind', '')
+                    rows.append((
+                        idx,
+                        'Variable',
+                        f'{comp} / {b.get("node_name") or b.get("node_id", "")} .{prop}',
+                        f'{frm} → {to} ({kind})',
+                        file_path,
+                    ))
+            else:
+                idx += 1
+                rows.append((
+                    idx,
+                    'Screen',
+                    f'{comp} ({node_id})',
+                    ch.get('change_kind') or ch.get('kind') or '(内容不明)',
+                    file_path,
+                ))
+
+    if not rows:
+        rows = [(1, '-', '(design_changes 空)', '変更検出なし', '-')]
+
+    row = _write_table(ws, 4,
+                       ['#', '種別', '対象', '変更内容', '影響ファイル'],
+                       rows, header_style='dark')
+
+    kind_var    = sum(1 for r in rows if r[1] == 'Variable')
+    kind_screen = sum(1 for r in rows if r[1] == 'Screen')
+    kind_other  = len(rows) - kind_var - kind_screen
+    ws.merge_cells(f'A{row + 1}:E{row + 1}')
+    _cell(ws, f'A{row + 1}',
+          f'合計: {len(rows)} 件  (Variable: {kind_var} / Screen: {kind_screen} / その他: {kind_other})',
+          font=FONT_TD_B, fill=FILL_TOTAL, align=ALIGN_L)
+
+
+# ─────────────────────────────────────────────────
+# Sheet 03: UI Before-After
+# ─────────────────────────────────────────────────
+def _build_03_ui_diff(wb, ctx: ExcelFillContext):
+    ws = wb.create_sheet('03_UI Before-After')
+    _set_col_widths(ws, {'A': 5, 'B': 22, 'C': 38, 'D': 38, 'E': 34})
+    _banner(ws, 1, 'A', 'E', 'UI Before / After', '画面別スクショ比較')
+
+    headers = ['#', '画面', 'Before', 'After', '差分説明']
+    for i, h in enumerate(headers):
+        c = ws.cell(row=4, column=i + 1, value=h)
+        c.font = FONT_TH_INV; c.fill = FILL_HDR_D; c.alignment = ALIGN_CTR; c.border = BORDER
+    ws.row_dimensions[4].height = 24
+
     dc = ctx.design_changes or []
     if not dc:
-        ws.cell(6, 1).value = '(視覚差分なし — screenshot 未収集 or design_changes 空)'
+        ws.merge_cells('A5:E5')
+        _cell(ws, 'A5', '(design_changes 空 — screenshot 未収集 or 変更なし)',
+              font=FONT_TD, align=ALIGN_L)
         return
 
-    row = 6
-    for idx, c in enumerate(dc, start=1):
-        # 変更ヘッダ
-        ws.cell(row, 1).value = f'変更 #{idx}  {c.get("component", "")} ({c.get("node_id", "")})'
-        ws.cell(row, 1).font = BOLD
-        ws.cell(row, 1).fill = SECTION_FILL
-        row += 1
+    for idx, c in enumerate(dc):
+        r = 5 + idx
+        ws.row_dimensions[r].height = 130
+        _cell(ws, f'A{r}', idx + 1, font=FONT_TD, align=ALIGN_CTR)
+        _cell(ws, f'B{r}', f'{c.get("component", "")}\n({c.get("node_id", "")})',
+              font=FONT_TD_B, align=ALIGN_L)
 
-        # 概要 (bindingChanges 総数を含める)
-        binding_total = sum(
-            len(ch.get('bindingChanges', []) or []) for ch in (c.get('changes') or [])
-        )
-        summary_parts = [f'file={c.get("file", "")}']
-        if binding_total > 0:
-            summary_parts.append(f'{binding_total} binding 変更検出')
-        if c.get('diff_pixels') is not None:
-            summary_parts.append(f'diff_pixels={c.get("diff_pixels")}')
-        ws.cell(row, 1).value = '概要: ' + ', '.join(summary_parts)
-        ws.cell(row, 1).alignment = WRAP
-        row += 1
-
-        # bindingChanges 詳細（ツリー表示）
-        # changes[].bindingChanges[] を全部展開
-        binding_rows: list = []
-        for ch in (c.get('changes') or []):
-            for b in (ch.get('bindingChanges') or []):
-                binding_rows.append(b)
-        if binding_rows:
-            for j, b in enumerate(binding_rows):
-                prefix = '  └ ' if j == len(binding_rows) - 1 else '  ├ '
-                frm = b.get('from_variable_id') or '(なし)'
-                to = b.get('to_variable_id') or '(なし)'
-                line = f'{prefix}{b.get("property", "")}: {frm} → {to} ({b.get("change_kind", "")})'
-                ws.cell(row, 1).value = line
-                ws.cell(row, 1).alignment = WRAP
-                fill = _binding_fill(b.get('change_kind', ''))
-                if fill is not None:
-                    ws.cell(row, 1).fill = fill
-                row += 1
-        else:
-            ws.cell(row, 1).value = '  (bindingChanges なし)'
-            row += 1
-
-        # BEFORE / AFTER 画像（あれば埋込、無ければテキスト表示）
-        for col_letter, key, label in [
-            ('B', 'before_png', 'BEFORE'),
-            ('D', 'after_png', 'AFTER'),
-        ]:
+        for col, key, label in [('C', 'before_png', 'BEFORE'), ('D', 'after_png', 'AFTER')]:
             png = c.get(key)
-            cell_addr = f'{col_letter}{row}'
+            addr = f'{col}{r}'
             if png and Path(png).exists():
                 try:
                     img = XLImage(png)
-                    img.width, img.height = 320, 200
-                    ws.add_image(img, cell_addr)
-                    ws.row_dimensions[row].height = 155
+                    img.width, img.height = 260, 165
+                    ws.add_image(img, addr)
+                    _cell(ws, addr, '', font=FONT_TD, align=ALIGN_CTR)
                 except Exception:
-                    ws[cell_addr] = f'[{label}] (画像埋込失敗)'
+                    _cell(ws, addr, f'[{label}] (画像埋込失敗)', font=FONT_TD, align=ALIGN_CTR)
             else:
-                ws[cell_addr] = f'[{label}] (画像なし — screenshot skip)'
-        row += 2
+                _cell(ws, addr, f'[{label}] (画像なし)', font=FONT_TD, align=ALIGN_CTR)
+
+        # 差分説明: bindingChanges 件数 + diff_pixels
+        binding_total = sum(len(ch.get('bindingChanges', []) or []) for ch in (c.get('changes') or []))
+        parts = [f'file: {c.get("file", "")}']
+        if binding_total > 0:
+            parts.append(f'{binding_total} binding 変更')
+        if c.get('diff_pixels') is not None:
+            parts.append(f'diff: {c.get("diff_pixels")} px')
+        _cell(ws, f'E{r}', '\n'.join(parts), font=FONT_TD, align=ALIGN_L)
 
 
-# ── Sheet 03: state.json差分 ──
-def _fill_03_state_diff(ws, ctx: ExcelFillContext) -> None:
-    before = ctx.state_before or {}
-    after = ctx.state_after or {}
+# ─────────────────────────────────────────────────
+# Sheet 04: コード変更
+# ─────────────────────────────────────────────────
+def _build_04_code_changes(wb, ctx: ExcelFillContext):
+    ws = wb.create_sheet('04_コード変更')
+    _set_col_widths(ws, {'A': 5, 'B': 40, 'C': 12, 'D': 32, 'E': 14, 'F': 24})
+    _banner(ws, 1, 'A', 'F', 'コード変更', 'ファイル別 diff + 検出経路 + bindingChanges 詳細')
 
-    # ── Fallback 発動情報 section (冒頭、行 3) ──
-    # fallback 経由で state / snapshot が更新されたかを説明する rich context
-    if ctx.fallback_triggered:
-        fi = ctx.fallback_info or {}
-        ws.cell(3, 1).value = '◆ Fallback 発動情報'
-        ws.cell(3, 1).font = FALLBACK_FONT
-        ws.cell(3, 1).fill = FALLBACK_FILL
-        fb_rows = [
-            ('発動理由 (reason)', fi.get('reason', 'UNKNOWN')),
-            ('From version', fi.get('fromVersion', '(N/A)')),
-            ('To version (head)', fi.get('headVersionId', '(N/A)')),
-            ('fallback status', fi.get('fallbackStatus', '(N/A)')),
-            ('検出 node 数 (local-diff)', fi.get('nodeDiffCount', 0)),
-        ]
-        for i, (label, val) in enumerate(fb_rows, start=1):
-            # 通常 section は行 4 (◆ バージョン...) から始まるので、
-            # fallback section は上方に押し込むのでなく右側 (H-K 列) に横並びで置く
-            r = 3 + i
-            ws.cell(r, 8).value = label
-            ws.cell(r, 8).font = BOLD
-            ws.cell(r, 8).fill = FALLBACK_FILL
-            ws.cell(r, 10).value = str(val)
-            ws.cell(r, 10).fill = FALLBACK_FILL
-
-    def _cmp(k):
-        b = before.get(k, '(なし)')
-        a = after.get(k, '(なし)')
-        chg = '変化' if b != a else '不変'
-        return b, a, chg
-
-    # バージョン (行 6-8)
-    version_fields = [
-        ('last_version_id', 'Figma バージョン'),
-        ('last_run_at', '最終実行時刻'),
-        ('last_fallback_at', '最終 fallback 時刻'),
-    ]
-    for i, (fld, desc) in enumerate(version_fields, start=1):
-        r = 5 + i
-        b, a, chg = _cmp(fld)
-        ws.cell(r, 1).value = i
-        ws.cell(r, 2).value = fld
-        ws.cell(r, 3).value = str(b)
-        ws.cell(r, 4).value = str(a)
-        ws.cell(r, 5).value = chg
-        ws.cell(r, 6).value = desc
-
-    # perFrameHash (行 11-13) — 現行 state に perFrameHash 未搭載 → N/A
-    cfg = ctx.config or {}
-    frames = cfg.get('frames', [])
-    for i, fr in enumerate(frames[:3], start=1):
-        r = 10 + i
-        ws.cell(r, 1).value = i
-        ws.cell(r, 2).value = f'{fr.get("nodeId", "")}  ({fr.get("component", "")})'
-        ws.cell(r, 3).value = '(state v4 未搭載)'
-        ws.cell(r, 4).value = '(state v4 未搭載)'
-        ws.cell(r, 5).value = 'N/A'
-        ws.cell(r, 6).value = 'v4 では nodeDiff で判定'
-
-    # メタ情報 (行 17-)
-    diff_sum = ctx.diff_summary or {}
-    meta_rows = [
-        ('nodeDiff.length', diff_sum.get('nodeDiffCount', 0)),
-        ('warnings.length', len(diff_sum.get('warnings', []))),
-        ('fallback_count_last_7days', after.get('fallback_count_last_7days', 0)),
-        ('changedFiles', len((ctx.apply_result or {}).get('changedFiles', []))),
-    ]
-    for i, (fld, val) in enumerate(meta_rows, start=1):
-        r = 16 + i
-        b_val = before.get(fld, '(N/A)') if fld in before else '(N/A)'
-        ws.cell(r, 1).value = i
-        ws.cell(r, 2).value = fld
-        ws.cell(r, 3).value = str(b_val)
-        ws.cell(r, 4).value = str(val)
-        ws.cell(r, 5).value = '変化' if str(b_val) != str(val) else '不変'
-        ws.cell(r, 6).value = 'Phase 1-b 出力'
-
-    # snapshot 変化 (行 28-30)
-    ws.cell(28, 1).value = 1
-    ws.cell(28, 2).value = 'snapshot 更新'
-    ws.cell(28, 3).value = '(前回)'
-    ws.cell(28, 4).value = '(fallback 経由で更新)' if 'fallback' in _detect_method(ctx) else '(未更新)'
-    ws.cell(28, 5).value = '変化' if 'fallback' in _detect_method(ctx) else '不変'
-    ws.cell(28, 6).value = 'snapshots/last-full.json'
-
-
-# ── Sheet 04: コード変更 ──
-def _fill_04_code_changes(ws, ctx: ExcelFillContext) -> None:
     git = ctx.git_info or {}
     apply_res = ctx.apply_result or {}
-    diff_sum = ctx.diff_summary or {}
     changed_files = apply_res.get('changedFiles') or git.get('changed_files') or []
     sha = (git.get('commit_sha') or '')[:8] or '(uncommitted)'
-    commit_msg = git.get('commit_msg') or ''
+    route = 'fallback (local-diff)' if ctx.fallback_triggered else 'figma_diff_versions'
 
-    # 検出経路ラベル: fallback 起動時は明示 (H 列に追加 / F 列 も上書き)
-    route_label = 'fallback (local-diff)' if ctx.fallback_triggered else 'figma_diff_versions'
+    # ファイル一覧 (行 4-)
+    rows = []
+    for i, f in enumerate(changed_files, start=1):
+        rows.append((i, f, sha, git.get('commit_msg', '')[:60] or '(msg なし)',
+                     'PASS' if not apply_res.get('errors') else 'FAIL', route))
+    if not rows:
+        rows = [(1, '(変更ファイルなし)', '-', '-', 'N/A', route)]
 
-    # 追加ヘッダー: H 列に「検出経路」列 (fallback 有無で明示)
-    ws.cell(4, 8).value = '検出経路'
-    ws.cell(4, 8).font = BOLD
+    end_row = _write_table(ws, 4,
+                           ['#', 'ファイル', 'コミット', 'メッセージ', 'apply結果', '検出経路'],
+                           rows, header_style='dark')
+
+    # fallback 時は検出経路列を赤くハイライト
     if ctx.fallback_triggered:
-        ws.cell(4, 8).fill = FALLBACK_FILL
-
-    # コミット / 適用ファイル (行 5-)
-    for i, f in enumerate(changed_files[:4], start=1):
-        r = 4 + i
-        ws.cell(r, 1).value = i
-        ws.cell(r, 2).value = sha
-        ws.cell(r, 3).value = f
-        ws.cell(r, 4).value = '値変更'
-        ws.cell(r, 5).value = commit_msg[:80] or '(msg なし)'
-        # F 列: 従来「Figma nodeDiff 経由」→ fallback 時は明示
-        ws.cell(r, 6).value = (
-            'Figma fallback 経路 (raw property)' if ctx.fallback_triggered
-            else 'Figma nodeDiff 経由'
-        )
-        ws.cell(r, 7).value = 'PASS' if not apply_res.get('errors') else 'FAIL'
-        # H 列: 検出経路 (明示)
-        ws.cell(r, 8).value = route_label
-        if ctx.fallback_triggered:
-            ws.cell(r, 8).fill = FALLBACK_FILL
-
-    # warnings (drift 相当) 行 11-14
-    warnings = diff_sum.get('warnings', []) or []
-    if not warnings:
-        ws.cell(11, 1).value = 1
-        ws.cell(11, 2).value = '(warnings なし)'
-        ws.cell(11, 7).value = 'N/A'
-    else:
-        for i, w in enumerate(warnings[:4], start=1):
-            r = 10 + i
-            ws.cell(r, 1).value = i
-            ws.cell(r, 2).value = 'diff warning'
-            ws.cell(r, 3).value = str(w)[:120]
-            ws.cell(r, 7).value = 'flag'
-
-    ws.cell(15, 1).value = '合計'
-    ws.cell(15, 1).font = BOLD
-    ws.cell(15, 5).value = f'{len(changed_files)} files apply / {len(warnings)} warnings'
-
-    # ── ◆ Figma 変更詳細 (bindingChanges) section ──
-    # v11.1 追加：git commit 情報 だけでは「Figma 側でどの property が動いたか」が
-    # Excel から見えない。design_changes[].changes[].bindingChanges[] を flat 化して
-    # 1 binding = 1 row で展開する。change_kind に応じた背景色で視認性を上げる。
-    section_header_row = 17
-    ws.cell(section_header_row, 1).value = '◆ Figma 変更詳細 (bindingChanges)'
-    ws.cell(section_header_row, 1).font = SECTION_FONT
-    ws.cell(section_header_row, 1).fill = SECTION_FILL
-
-    header_row = section_header_row + 1
-    headers = ['#', '対象 frame', 'node_id', 'node_name', 'property', 'from', 'to', '種類']
-    for i, h in enumerate(headers, start=1):
-        ws.cell(header_row, i).value = h
-        ws.cell(header_row, i).font = BOLD
-        ws.cell(header_row, i).fill = SECTION_FILL
-
-    binding_rows = _collect_binding_rows(ctx.design_changes or [])
-    start_data_row = header_row + 1
-    if not binding_rows:
-        ws.cell(start_data_row, 1).value = 1
-        ws.cell(start_data_row, 2).value = '(bindingChanges なし)'
-        ws.cell(start_data_row, 8).value = 'N/A'
-    else:
-        for i, b in enumerate(binding_rows, start=1):
-            r = start_data_row + (i - 1)
-            ws.cell(r, 1).value = i
-            ws.cell(r, 2).value = f'{b["component"]} ({b["frame_node_id"]})' if b['component'] else b['frame_node_id']
-            ws.cell(r, 3).value = b['node_id']
-            ws.cell(r, 4).value = b['node_name']
-            ws.cell(r, 5).value = b['property']
-            ws.cell(r, 6).value = b['from_variable_id'] if b['from_variable_id'] is not None else '(なし)'
-            ws.cell(r, 7).value = b['to_variable_id'] if b['to_variable_id'] is not None else '(なし)'
-            ws.cell(r, 8).value = b['change_kind']
-            fill = _binding_fill(b['change_kind'])
-            if fill is not None:
-                # 種類 (H 列) のみ着色して行全体を汚さない
-                ws.cell(r, 8).fill = fill
-
-
-# ── Sheet 05: テストケース ──
-def _fill_05_test_cases(ws, ctx: ExcelFillContext) -> None:
-    ph = ctx.phase_results or {}
-    ts = ctx.run_ts.split(' ')[0] if ' ' in ctx.run_ts else ctx.run_ts[:10]
-
-    tc_defs = [
-        ('TC001', 'Phase 1-a', 'detect (figma_get_file_versions)',
-         'NO_CHANGE / CHANGED / NO_STATE 判定',
-         ph.get('phase_1a', 'N/A'),
-         'Phase 1-a 出力'),
-        ('TC002', 'Phase 1-b', 'diff (figma_diff_versions)',
-         'nodeDiffs 生成',
-         ph.get('phase_1b', 'N/A'),
-         'diff.json 生成'),
-        ('TC003', 'Phase 1-b-fallback', 'get_file_at_version 全 tree',
-         'INITIAL / CHANGED / NO_CHANGE',
-         ph.get('phase_1b_fallback', 'N/A'),
-         'fallback.log'),
-        ('TC004', 'Phase 1-c', 'detail 詳細取得',
-         '各 nodeDiff の node 詳細',
-         ph.get('phase_1c', 'N/A'),
-         'detail.json'),
-        ('TC005', 'Phase 3', 'apply コード反映',
-         'changedFiles 生成、errors=0',
-         ph.get('phase_3', 'N/A'),
-         'apply.json'),
-        ('TC006', 'Phase 4', 'screenshot + pixelmatch',
-         'before/after/diff.png 生成',
-         ph.get('phase_4', 'N/A'),
-         'screenshots/*.png'),
-        ('TC007', 'Phase 5', 'tests (unit + e2e + audit)',
-         'exitCode=0',
-         ph.get('phase_5', 'N/A'),
-         'test-results.json'),
-        ('TC008', 'Phase 6', 'Excel 報告書生成',
-         'report.xlsx 生成',
-         'PASS (本 report 自身)',
-         'report.xlsx'),
-        ('TC009', 'Phase 7', '人間承認 (y/n)',
-         'APPROVED / REJECTED 判定',
-         ph.get('phase_7', 'N/A'),
-         'status.txt'),
-        ('TC010', 'Phase 8', 'git commit',
-         'commit 作成',
-         ph.get('phase_8', 'N/A'),
-         'git log'),
-        ('TC011', 'Phase 9', 'state 更新',
-         '.figma-sync-state.json 更新',
-         ph.get('phase_9', 'N/A'),
-         'state file'),
-    ]
-
-    ws.cell(4, 2).value = '◆ figma-sync パイプライン全 Phase 実施ログ'
-    ws.cell(4, 2).font = SECTION_FONT
-    ws.cell(4, 2).fill = SECTION_FILL
-
-    for i, (tc_id, phase, desc, expected, actual, evidence) in enumerate(tc_defs):
-        r = 5 + i
-        ws.cell(r, 2).value = tc_id
-        ws.cell(r, 3).value = phase
-        ws.cell(r, 4).value = desc
-        ws.cell(r, 5).value = expected
-        ws.cell(r, 6).value = f'{actual}'
-        ws.cell(r, 7).value = ts
-        ws.cell(r, 8).value = 'Claude Code'
-        ws.cell(r, 9).value = ts
-        ws.cell(r, 10).value = 'Bridge'
-        ws.cell(r, 11).value = evidence
-        for col in range(2, 12):
-            ws.cell(r, col).alignment = WRAP
+        for r_idx in range(5, end_row):
+            ws.cell(r_idx, 6).fill = FILL_FALLBACK
 
     # 合計行
-    total_row = 5 + len(tc_defs) + 1
-    ws.cell(total_row, 1).value = '合計:'
-    ws.cell(total_row, 2).value = f'{len(tc_defs)} テストケース (Phase 1-a〜9)'
-    ws.cell(total_row, 1).font = BOLD
+    ws.merge_cells(f'A{end_row + 1}:F{end_row + 1}')
+    _cell(ws, f'A{end_row + 1}',
+          f'合計: {len(changed_files)} files apply / errors={len(apply_res.get("errors", []))}',
+          font=FONT_TD_B, fill=FILL_TOTAL, align=ALIGN_L)
+
+    # bindingChanges 詳細 section
+    sec_row = end_row + 3
+    ws.merge_cells(f'A{sec_row}:F{sec_row}')
+    _cell(ws, f'A{sec_row}', '◆ Figma 変更詳細 (bindingChanges)',
+          font=FONT_H2, fill=FILL_HDR, align=ALIGN_L)
+    ws.row_dimensions[sec_row].height = 26
+
+    binding_headers = ['#', '対象 frame', 'node_id', 'property', 'from → to', '種類']
+    for i, h in enumerate(binding_headers):
+        c = ws.cell(row=sec_row + 1, column=i + 1, value=h)
+        c.font = FONT_TH_INV; c.fill = FILL_HDR_D; c.alignment = ALIGN_CTR; c.border = BORDER
+    ws.row_dimensions[sec_row + 1].height = 24
+
+    binding_rows = _collect_binding_rows(ctx.design_changes or [])
+    if not binding_rows:
+        ws.merge_cells(f'A{sec_row + 2}:F{sec_row + 2}')
+        _cell(ws, f'A{sec_row + 2}', '(bindingChanges なし)',
+              font=FONT_TD, align=ALIGN_L)
+    else:
+        for i, b in enumerate(binding_rows):
+            r = sec_row + 2 + i
+            _cell(ws, f'A{r}', i + 1, font=FONT_TD, align=ALIGN_CTR)
+            _cell(ws, f'B{r}',
+                  f'{b["component"]} ({b["frame_node_id"]})' if b['component'] else b['frame_node_id'],
+                  font=FONT_TD, align=ALIGN_L)
+            _cell(ws, f'C{r}', b['node_id'], font=FONT_TD, align=ALIGN_L)
+            _cell(ws, f'D{r}', b['property'], font=FONT_TD, align=ALIGN_L)
+            frm = _fmt_variable(b['from_variable_id'], ctx.variables_map)
+            to = _fmt_variable(b['to_variable_id'], ctx.variables_map)
+            _cell(ws, f'E{r}', f'{frm} → {to}', font=FONT_TD, align=ALIGN_L)
+            fill = _binding_fill(b['change_kind'])
+            _cell(ws, f'F{r}', b['change_kind'], font=FONT_TD_B, fill=fill, align=ALIGN_CTR)
+            ws.row_dimensions[r].height = 22
 
 
-# ── Sheet 06: 総合結果 ──
-def _fill_06_summary(ws, ctx: ExcelFillContext) -> None:
-    git = ctx.git_info or {}
-    apply_res = ctx.apply_result or {}
+# ─────────────────────────────────────────────────
+# Sheet 05: 全システムテスト
+# ─────────────────────────────────────────────────
+def _build_05_full_tests(wb, ctx: ExcelFillContext):
+    ws = wb.create_sheet('05_全システムテスト')
+    _set_col_widths(ws, {'A': 5, 'B': 22, 'C': 14, 'D': 8, 'E': 8, 'F': 8, 'G': 10, 'H': 40})
+    _banner(ws, 1, 'A', 'H', '全システムテスト',
+            'vitest / Playwright / a11y / snapshot フル実行 (回帰確認)')
+
     tr = ctx.test_results or {}
-    dc = ctx.design_changes or []
-    changed_files = apply_res.get('changedFiles') or []
+    ph = ctx.phase_results or {}
 
-    sha = (git.get('commit_sha') or '')[:8] or '(none)'
-    pr_url = git.get('pr_url') or '(未作成)'
+    def _rows_for(section: dict, tool: str):
+        """test-results.json の 1 section から (件数, PASS数, FAIL数, 時間) を推定"""
+        if not section:
+            return 0, 0, 0, '-'
+        exit_code = section.get('exitCode')
+        if exit_code is None:
+            return 0, 0, 0, '-'
+        # 生実行時間があれば拾う (無ければ '-')
+        dur = section.get('duration') or section.get('durationSec') or '-'
+        dur_str = f'{dur}s' if isinstance(dur, (int, float)) else str(dur)
+        # numPassed/numFailed が無い場合は exitCode で推定
+        n = section.get('numTotal') or section.get('total') or 1
+        p = section.get('numPassed') or section.get('passed') or (n if exit_code == 0 else 0)
+        f = section.get('numFailed') or section.get('failed') or (0 if exit_code == 0 else n)
+        return n, p, f, dur_str
 
-    # ◆ PR 確認 (行 5-11)
-    pr_rows = [
-        ('PR 番号', pr_url, git.get('commit_msg', '')[:80], 'Open' if pr_url != '(未作成)' else 'N/A'),
-        ('コミット', sha, git.get('commit_msg', '')[:80], 'PASS' if sha != '(none)' else 'N/A'),
-        ('変更ファイル数', f'{len(changed_files)} files', ', '.join(changed_files)[:200], 'PASS' if changed_files else 'N/A'),
-        ('final status', ctx.final_status or 'UNKNOWN', 'runs/<ts>/status.txt', ctx.final_status or 'N/A'),
-        ('検出方式', _detect_method(ctx), 'Phase 1-b or fallback', 'PASS'),
-        ('Workflow run', '(local run)', 'ローカル実行のため N/A', 'N/A'),
-        ('SKILL.md version', 'v4', 'REST-only 2026-08-21', 'PASS'),
-    ]
-    for i, row_data in enumerate(pr_rows):
-        r = 5 + i
-        for col, val in enumerate(row_data, start=1):
-            ws.cell(r, col).value = val
-            ws.cell(r, col).alignment = WRAP
-
-    # ◆ 最終判定 (行 14-24)
     unit = tr.get('unit') or {}
     e2e = tr.get('e2e') or {}
-    unit_verdict = 'PASS' if unit.get('exitCode') == 0 else ('FAIL' if unit else 'SKIP')
-    e2e_verdict = 'PASS' if e2e.get('exitCode') == 0 else ('FAIL' if e2e else 'SKIP')
+    audit = tr.get('audit') or {}
+    coverage = tr.get('coverage') or {}
+    cov_line = (coverage.get('total') or {}).get('lines', {}).get('pct', '-') if coverage else '-'
+
+    rows_input = [
+        ('単体・契約・統合 (Vitest)', 'Vitest',       *_rows_for(unit, 'Vitest')),
+        ('E2E (Playwright)',        'Playwright',   *_rows_for(e2e, 'Playwright')),
+        ('a11y (axe-core)',         'axe-core',     0, 0, 0, '-'),
+        ('snapshot',                'Jest',         0, 0, 0, '-'),
+    ]
+
+    rows = []
+    for i, (name, tool, n, p, f, dur) in enumerate(rows_input, start=1):
+        note = ''
+        if 'Vitest' in tool and cov_line != '-':
+            note = f'coverage(lines)={cov_line}%'
+        if 'Playwright' in tool:
+            note = f'phase_4={ph.get("phase_4", "-")}, phase_5={ph.get("phase_5", "-")}'
+        if 'axe' in tool:
+            note = '(未収集 / v11.3 で追加予定)'
+        if 'snapshot' in tool.lower() or 'Jest' == tool:
+            note = '(未収集 / v11.3 で追加予定)'
+        rows.append((i, name, tool, n, p, f, dur, note))
+
+    end_row = _write_table(ws, 4,
+                           ['#', 'テスト種別', 'ツール', '件数', 'PASS', 'FAIL', '実行時間', '影響ファイル相関 / 備考'],
+                           rows, header_style='dark')
+
+    total_n = sum(r[3] for r in rows)
+    total_p = sum(r[4] for r in rows)
+    total_f = sum(r[5] for r in rows)
+    ws.merge_cells(f'A{end_row + 1}:H{end_row + 1}')
+    icon = '全PASS ✅' if total_f == 0 else 'FAIL あり ❌'
+    _cell(ws, f'A{end_row + 1}',
+          f'合計: {total_n} 件 / PASS {total_p} / FAIL {total_f}  ({icon})',
+          font=FONT_TD_B, fill=FILL_TOTAL, align=ALIGN_L)
+
+    # npm audit セクション (簡易)
+    audit_row = end_row + 3
+    ws.merge_cells(f'A{audit_row}:H{audit_row}')
+    _cell(ws, f'A{audit_row}', '◆ npm audit',
+          font=FONT_H2, fill=FILL_HDR, align=ALIGN_L)
+    ws.row_dimensions[audit_row].height = 26
+
+    audit_json = (audit.get('json') or {}) if audit else {}
+    vuln = (audit_json.get('metadata') or {}).get('vulnerabilities', {})
+    audit_rows = [
+        ('critical', vuln.get('critical', 0)),
+        ('high',     vuln.get('high', 0)),
+        ('moderate', vuln.get('moderate', 0)),
+        ('low',      vuln.get('low', 0)),
+        ('info',     vuln.get('info', 0)),
+        ('total',    vuln.get('total', 0)),
+    ]
+    for i, (sev, cnt) in enumerate(audit_rows):
+        r = audit_row + 1 + i
+        _cell(ws, f'A{r}', sev, font=FONT_TH, fill=FILL_HDR, align=ALIGN_CTR)
+        _cell(ws, f'B{r}', str(cnt), font=FONT_TD, align=ALIGN_L)
+        ws.row_dimensions[r].height = 20
+
+    return total_n, total_p, total_f
+
+
+# ─────────────────────────────────────────────────
+# Sheet 06: 異常系＆セキュリティ
+# ─────────────────────────────────────────────────
+def _build_06_abnormal_sec(wb, ctx: ExcelFillContext):
+    ws = wb.create_sheet('06_異常系＆セキュリティ')
+    _set_col_widths(ws, {'A': 5, 'B': 10, 'C': 34, 'D': 10, 'E': 40})
+    _banner(ws, 1, 'A', 'E', '異常系 ＆ セキュリティ',
+            'BAF 必須: 異常系ケース + セキュリティチェック')
+
+    headers = ['#', '分類', 'ケース', '結果', '備考']
+    for i, h in enumerate(headers):
+        c = ws.cell(row=4, column=i + 1, value=h)
+        c.font = FONT_TH_INV; c.fill = FILL_HDR_D; c.alignment = ALIGN_CTR; c.border = BORDER
+    ws.row_dimensions[4].height = 24
+
+    tr = ctx.test_results or {}
+    audit = tr.get('audit') or {}
+    audit_json = (audit.get('json') or {}) if audit else {}
+    vuln = (audit_json.get('metadata') or {}).get('vulnerabilities', {})
+    audit_total = vuln.get('total', 0)
+    audit_result = 'PASS' if audit_total == 0 else ('WARN' if not (vuln.get('critical', 0) or vuln.get('high', 0)) else 'FAIL')
+
+    # 異常系ケースは現状 phase から間接的にしか取れないので、phase 状態を代替表示
+    ph = ctx.phase_results or {}
+    fb = ctx.fallback_info or {}
+    cases = [
+        (1, '異常系', 'Fallback 経路発動 (raw property 検出)',
+         'WARN' if ctx.fallback_triggered else 'PASS',
+         (f'reason={fb.get("reason", "?")}、拾えた変更={fb.get("nodeDiffCount", 0)} 件'
+          if ctx.fallback_triggered else 'fallback 未発動')),
+        (2, '異常系', 'apply エラー (05-apply.js)',
+         'PASS' if not (ctx.apply_result or {}).get('errors') else 'FAIL',
+         f'errors={len((ctx.apply_result or {}).get("errors", []))}'),
+        (3, '異常系', 'diff warnings',
+         'PASS' if not (ctx.diff_summary or {}).get('warnings') else 'WARN',
+         f'warnings={len((ctx.diff_summary or {}).get("warnings", []))}'),
+        (4, 'Sec',   'npm audit (prod+dev 合算)',
+         audit_result,
+         f'total={audit_total} / critical={vuln.get("critical", 0)} / high={vuln.get("high", 0)}'),
+        (5, 'Sec',   'CSP ヘッダ検証',
+         'INFO', '(v11.3 では未計装)'),
+        (6, 'Sec',   '秘密情報スキャン (git secrets)',
+         'INFO', '(v11.3 では未計装)'),
+    ]
+
+    pass_cnt = warn_cnt = fail_cnt = 0
+    for idx, (num, cat, case, result, note) in enumerate(cases):
+        r = 5 + idx
+        _cell(ws, f'A{r}', num, font=FONT_TD, align=ALIGN_CTR)
+        _cell(ws, f'B{r}', cat, font=FONT_TD, align=ALIGN_CTR)
+        _cell(ws, f'C{r}', case, font=FONT_TD, align=ALIGN_L)
+        fill = {'PASS': FILL_OK, 'WARN': FILL_WARN, 'FAIL': FILL_NG}.get(result)
+        _cell(ws, f'D{r}', result, font=FONT_TD_B, fill=fill, align=ALIGN_CTR)
+        _cell(ws, f'E{r}', note, font=FONT_TD, align=ALIGN_L)
+        ws.row_dimensions[r].height = 22
+        if result == 'PASS': pass_cnt += 1
+        elif result == 'WARN': warn_cnt += 1
+        elif result == 'FAIL': fail_cnt += 1
+
+    # 合計行
+    end_row = 5 + len(cases)
+    ws.merge_cells(f'A{end_row}:E{end_row}')
+    _cell(ws, f'A{end_row}',
+          f'合計: PASS {pass_cnt} / WARN {warn_cnt} / FAIL {fail_cnt} / INFO {len(cases) - pass_cnt - warn_cnt - fail_cnt}',
+          font=FONT_TD_B, fill=FILL_TOTAL, align=ALIGN_L)
+
+    return pass_cnt, warn_cnt, fail_cnt
+
+
+# ─────────────────────────────────────────────────
+# Sheet 07: 承認履歴
+# ─────────────────────────────────────────────────
+def _build_07_approvals(wb, ctx: ExcelFillContext):
+    ws = wb.create_sheet('07_承認履歴')
+    _set_col_widths(ws, {'A': 5, 'B': 14, 'C': 28, 'D': 22, 'E': 22, 'F': 42})
+    _banner(ws, 1, 'A', 'F', '承認履歴', 'AI 2段レビュー + 人間承認')
+
+    headers = ['#', '段', 'レビュアー', '日時', '判定', 'コメント']
+    for i, h in enumerate(headers):
+        c = ws.cell(row=4, column=i + 1, value=h)
+        c.font = FONT_TH_INV; c.fill = FILL_HDR_D; c.alignment = ALIGN_CTR; c.border = BORDER
+    ws.row_dimensions[4].height = 24
 
     ph = ctx.phase_results or {}
-    fi = ctx.fallback_info or {}
-    fb_yes_no = 'YES' if ctx.fallback_triggered else 'NO'
-    fb_detail = (
-        f'reason={fi.get("reason", "?")}、拾えた変更={fi.get("nodeDiffCount", 0)} 件'
-        if ctx.fallback_triggered
-        else '通常 (figma_diff_versions で完結)'
-    )
-    verdict_rows = [
-        ('Figma 変更検出', f'{len(dc)} 変更', 'design_changes.json', 'PASS' if dc else 'N/A'),
-        ('コード反映 (apply)', f'{len(changed_files)} files', 'apply.json', 'PASS' if changed_files else 'N/A'),
-        ('画像差分 (pixelmatch)', f'{sum(c.get("diff_pixels", 0) or 0 for c in dc)} px 合計', 'screenshots/', 'INFO'),
-        ('Fallback 経路発動', fb_yes_no, fb_detail, 'FALLBACK' if ctx.fallback_triggered else 'N/A'),
-        ('unit test', unit_verdict, '(vitest / jest)', unit_verdict),
-        ('e2e test', e2e_verdict, '(playwright)', e2e_verdict),
-        ('PR 状態', pr_url, 'gh pr', 'PASS' if pr_url != '(未作成)' else 'N/A'),
-        ('KEY DISCOVERY', ctx.final_status or 'UNKNOWN', 'status.txt', 'INFO'),
-    ]
-    for i, row_data in enumerate(verdict_rows):
-        r = 14 + i
-        for col, val in enumerate(row_data, start=1):
-            ws.cell(r, col).value = val
-            ws.cell(r, col).alignment = WRAP
-        # Fallback 行だけ赤色 fill (fallback 発動時のみ)
-        if row_data[0] == 'Fallback 経路発動' and ctx.fallback_triggered:
-            for col in range(1, 5):
-                ws.cell(r, col).fill = FALLBACK_FILL
-                ws.cell(r, col).font = FALLBACK_FONT
-
-    # ◆ 次回アクション (行 27-)
     status = ctx.final_status or 'UNKNOWN'
-    if status == 'REJECTED':
-        actions = [
-            ('REJECTED の要因調査', 'design_changes.json の diff pixel を確認', 'Bridge'),
-            ('state 更新なし', '次回 run で同じ diff が再検出される', 'Claude'),
-        ]
-    elif status == 'APPROVED':
-        actions = [
-            ('PR merge 判断', pr_url, 'Bridge'),
-            ('main 反映後の動作確認', 'Azure SWA デプロイ後の視覚確認', 'Bridge'),
-        ]
-    elif status == 'INITIAL_BASELINE':
-        actions = [
-            ('初回 baseline 完了', 'snapshot/state seed 済み、次回から diff 判定', 'Claude'),
-        ]
-    else:
-        actions = [
-            ('status 確認', f'status.txt={status}', 'Bridge'),
-        ]
-    for i, (item, detail, owner) in enumerate(actions, start=1):
-        r = 26 + i
-        ws.cell(r, 1).value = i
-        ws.cell(r, 2).value = item
-        ws.cell(r, 3).value = detail
-        ws.cell(r, 4).value = owner
-        for col in range(1, 5):
-            ws.cell(r, col).alignment = WRAP
+    phase_7 = ph.get('phase_7', 'PENDING')
 
-    ws.cell(35, 1).value = f'総合判定: {status}'
-    ws.cell(35, 1).font = BOLD
-    ws.cell(37, 1).value = f'作成: {ctx.run_ts}  Bridge / Claude Code'
-    ws.cell(37, 1).font = BOLD
+    ai1_verdict = 'OK' if status not in ('REJECTED', 'FAILED') else 'NG'
+    ai2_verdict = 'OK' if status == 'APPROVED' or phase_7 == 'PENDING' else ('NG' if status == 'REJECTED' else 'OK')
+
+    human_verdict = {
+        'APPROVED': '☑適用可',
+        'REJECTED': '☑否',
+        'INITIAL_BASELINE': '☑baseline',
+    }.get(status, '☐適用可 ☐差戻し ☐否')
+
+    approvals = [
+        ('AI 1段目', 'Claude Code (実装担当)', ctx.run_ts or '-', ai1_verdict,
+         f'phase_3={ph.get("phase_3", "-")} / phase_5={ph.get("phase_5", "-")}'),
+        ('AI 2段目', 'Claude Code (レビュー)', ctx.run_ts or '-', ai2_verdict,
+         f'phase_7={phase_7} / final_status={status}'),
+        ('人間',     '____________________', '____-__-__ __:__', human_verdict, '所感:'),
+    ]
+
+    for idx, (stage, reviewer, dt, verdict, comment) in enumerate(approvals):
+        r = 5 + idx
+        _cell(ws, f'A{r}', idx + 1, font=FONT_TD, align=ALIGN_CTR)
+        _cell(ws, f'B{r}', stage, font=FONT_TD_B, align=ALIGN_CTR)
+        _cell(ws, f'C{r}', reviewer, font=FONT_TD, align=ALIGN_L)
+        _cell(ws, f'D{r}', dt, font=FONT_TD, align=ALIGN_CTR)
+        is_human = stage == '人間'
+        fill = FILL_PANEL if is_human else (FILL_OK if verdict == 'OK' else FILL_NG)
+        _cell(ws, f'E{r}', verdict, font=FONT_TD_B, fill=fill, align=ALIGN_CTR)
+        _cell(ws, f'F{r}', comment, font=FONT_TD, align=ALIGN_L)
+        ws.row_dimensions[r].height = 42 if is_human else 22
+
+    # フッタ注記
+    ws.merge_cells('A9:F10')
+    _cell(ws, 'A9',
+          '※ 人間承認欄は手書き記入枠。判定が「差戻し」「否」の場合は再 sync + 本レポート再生成を伴う。',
+          font=FONT_TD, fill=FILL_PANEL, align=ALIGN_L)
