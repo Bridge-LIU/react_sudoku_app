@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { computeNodeDiff } from '../scripts/lib/local-diff.mjs';
 
-const fixDir = join(process.cwd(), 'tests', 'fixtures');
+// Resolve fixtures relative to this test file (works from any CWD, e.g. React app root)
+const fixDir = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const v1 = JSON.parse(readFileSync(join(fixDir, 'snapshot-v1.json'), 'utf-8'));
 const v2 = JSON.parse(readFileSync(join(fixDir, 'snapshot-v2.json'), 'utf-8'));
 

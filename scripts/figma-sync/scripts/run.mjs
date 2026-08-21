@@ -289,7 +289,11 @@ async function runPhases3to9({
     return;
   }
 
-  const applyRes = await applyChanges({ mcp: mcpApply, config, nodeDiffs });
+  // fallback 経由の場合は snapshot を渡し、descendant nodeId → 登記 frame の解決を有効化
+  const applyRes = await applyChanges({
+    mcp: mcpApply, config, nodeDiffs,
+    snapshot: fallbackTriggered ? newSnapshot : undefined
+  });
   console.log(`[Phase 3] changedFiles=${applyRes.changedFiles.length}, unregistered=${applyRes.unregistered.length}, errors=${applyRes.errors.length}`);
   if (applyRes.errors.length > 0) {
     console.log('           ⚠️ apply errors:', JSON.stringify(applyRes.errors, null, 2));
