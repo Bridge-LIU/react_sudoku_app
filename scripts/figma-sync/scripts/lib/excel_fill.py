@@ -469,12 +469,49 @@ def _build_02_change_summary(wb, ctx: ExcelFillContext):
 # ─────────────────────────────────────────────────
 # Sheet 03: UI Before-After
 # ─────────────────────────────────────────────────
+def _verdict_fill(verdict: str):
+    """v5 verdict → 背景色。CHANGED=淡青, SUSPICIOUS=赤, NO_CHANGE=なし。"""
+    v = (verdict or '').upper()
+    if v == 'CHANGED':    return FILL_HDR
+    if v == 'SUSPICIOUS': return FILL_NG
+    return None
+
+
+def _fmt_verify(entry: dict) -> tuple:
+    """(表示文字列, fill) を返す。verify_status 未指定なら ('-', None)。"""
+    status = (entry.get('verify_status') or '').upper()
+    ratio = entry.get('verify_ratio')
+    if not status:
+        return ('-', None)
+    if ratio is not None:
+        try:
+            text = f'{status} {float(ratio):.3f}'
+        except (TypeError, ValueError):
+            text = status
+    else:
+        text = status
+    fill = FILL_NG if status == 'FAIL' else (FILL_OK if status == 'PASS' else None)
+    return (text, fill)
+
+
+def _short_hash(h) -> str:
+    """hex hash → 先頭 12 桁 + …。None/空なら '-'"""
+    if not h:
+        return '-'
+    s = str(h)
+    return f'{s[:12]}…' if len(s) > 12 else s
+
+
 def _build_03_ui_diff(wb, ctx: ExcelFillContext):
     ws = wb.create_sheet('03_UI Before-After')
-    _set_col_widths(ws, {'A': 5, 'B': 22, 'C': 38, 'D': 38, 'E': 34})
-    _banner(ws, 1, 'A', 'E', 'UI Before / After', '画面別スクショ比較')
+    # v5: E=差分説明, F=Verdict, G=Verify, H=hash before, I=hash after
+    _set_col_widths(ws, {'A': 5, 'B': 22, 'C': 38, 'D': 38, 'E': 28,
+                         'F': 14, 'G': 14, 'H': 16, 'I': 16})
+    _banner(ws, 1, 'A', 'I', 'UI Before / After',
+            '画面別スクショ比較 + v5 検出シグナル (verdict / hash / verify)')
 
-    headers = ['#', '画面', 'Before', 'After', '差分説明']
+    headers = ['#', '画面', 'Before', 'After', '差分説明',
+               'Verdict', 'Verify', 'hash before', 'hash after']
     for i, h in enumerate(headers):
         c = ws.cell(row=4, column=i + 1, value=h)
         c.font = FONT_TH_INV; c.fill = FILL_HDR_D; c.alignment = ALIGN_CTR; c.border = BORDER
@@ -482,7 +519,7 @@ def _build_03_ui_diff(wb, ctx: ExcelFillContext):
 
     dc = ctx.design_changes or []
     if not dc:
-        ws.merge_cells('A5:E5')
+        ws.merge_cells('A5:I5')
         _cell(ws, 'A5', '(design_changes 空 — screenshot 未収集 or 変更なし)',
               font=FONT_TD, align=ALIGN_L)
         return
@@ -508,14 +545,30 @@ def _build_03_ui_diff(wb, ctx: ExcelFillContext):
             else:
                 _cell(ws, addr, f'[{label}] (画像なし)', font=FONT_TD, align=ALIGN_CTR)
 
-        # 差分説明: bindingChanges 件数 + diff_pixels
+        # 差分説明: bindingChanges 件数 + diff_pixels + diff_png
         binding_total = sum(len(ch.get('bindingChanges', []) or []) for ch in (c.get('changes') or []))
         parts = [f'file: {c.get("file", "")}']
         if binding_total > 0:
             parts.append(f'{binding_total} binding 変更')
         if c.get('diff_pixels') is not None:
             parts.append(f'diff: {c.get("diff_pixels")} px')
+        if c.get('diff_png'):
+            parts.append(f'diff_png: {c.get("diff_png")}')
         _cell(ws, f'E{r}', '\n'.join(parts), font=FONT_TD, align=ALIGN_L)
+
+        # v5 新カラム: Verdict / Verify / hash before / hash after
+        verdict = c.get('verdict', '') or ''
+        _cell(ws, f'F{r}', verdict or '-', font=FONT_TD_B,
+              fill=_verdict_fill(verdict), align=ALIGN_CTR)
+
+        verify_text, verify_fill = _fmt_verify(c)
+        _cell(ws, f'G{r}', verify_text, font=FONT_TD_B,
+              fill=verify_fill, align=ALIGN_CTR)
+
+        _cell(ws, f'H{r}', _short_hash(c.get('json_hash_before')),
+              font=FONT_TD, align=ALIGN_CTR)
+        _cell(ws, f'I{r}', _short_hash(c.get('json_hash_after')),
+              font=FONT_TD, align=ALIGN_CTR)
 
 
 # ─────────────────────────────────────────────────
