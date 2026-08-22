@@ -75,7 +75,21 @@ export async function takeScreenshots({
 
       const targetUrl = `${config.devServer.url}${frame.route}`;
       try {
-        await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 15000 });
+        // 1. load 完了まで待つ（Metro bundle 到着）
+        await page.goto(targetUrl, { waitUntil: 'load', timeout: 60000 });
+        // 2. SPA 描画完了まで待つ：body に text があって "Generating…" 等が消えている
+        //    networkidle だけだと Expo Web は空 body で抜けるため、この 2 段が要る
+        await page.waitForFunction(
+          () => {
+            const t = document.body?.innerText || '';
+            if (!t.trim()) return false;
+            if (/Generating|生成中|読み込み|Loading/i.test(t)) return false;
+            return true;
+          },
+          null, { timeout: 30000, polling: 500 }
+        ).catch(() => { /* timeout でもとにかく撮る */ });
+        // 3. アニメ落ち着き用の最小待機
+        await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
         const buf = await page.screenshot({ fullPage: true });
         writeFileSync(outPath, buf);
 

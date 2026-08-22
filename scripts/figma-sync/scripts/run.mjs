@@ -14,7 +14,7 @@
  *   2 = 追加 MCP データが必要（stderr に「fetch what」ヒント）
  *   1 = 実装エラー
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -27,13 +27,14 @@ import { applyChanges, resolveToRegisteredFrame } from './05-apply.mjs';
 import { takeScreenshots, generateDiff } from './06-screenshot.mjs';
 import { runTests } from './07-test.mjs';
 import { generateReport } from './08-report.mjs';
+import { startSilentDevServer, stopSilentDevServer } from './lib/dev-server.mjs';
 
 // ── CLI 引数パース ──
 function parseArgs(argv) {
   const args = {
-    headFile: null, diffFile: null, treeFile: null, jsxFile: null,
+    headFile: null, diffFile: null, treeFile: null, jsxFile: null, variablesFile: null,
     dryRun: false, confirm: null, noCommit: false,
-    skipTests: true, skipReport: false, skipScreenshot: true
+    skipTests: true, skipReport: false, skipScreenshot: false
   };
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
@@ -41,21 +42,25 @@ function parseArgs(argv) {
     else if (arg === '--diff-file') args.diffFile = argv[++i];
     else if (arg === '--tree-file') args.treeFile = argv[++i];
     else if (arg === '--jsx-file') args.jsxFile = argv[++i];
+    else if (arg === '--variables-file') args.variablesFile = argv[++i];
     else if (arg === '--confirm') args.confirm = argv[++i];  // yes | no
     else if (arg === '--no-commit') args.noCommit = true;
     else if (arg === '--run-tests') args.skipTests = false;
     else if (arg === '--skip-report') args.skipReport = true;
-    else if (arg === '--run-screenshot') args.skipScreenshot = false;
+    else if (arg === '--run-screenshot') args.skipScreenshot = false;    // 後方互換
+    else if (arg === '--no-screenshot') args.skipScreenshot = true;
     else if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--help' || arg === '-h') {
-      console.log(`Usage: node scripts/run.mjs --head-file <path> [--diff-file <path>] [--tree-file <path>] [--jsx-file <path>] [--confirm yes|no] [--no-commit] [--dry-run]`);
+      console.log(`Usage: node scripts/run.mjs --head-file <path> [--diff-file <path>] [--tree-file <path>] [--jsx-file <path>] [--variables-file <path>] [--confirm yes|no] [--no-commit] [--dry-run]`);
       console.log(`
 --jsx-file <path>: Phase 3 用 mock get_design_context データ。JSON形式 { "<nodeId>": "<jsx string>", ... }
+--variables-file <path>: figma_get_variables の生 JSON (VariableID → 変数名/値 の解決用)。省略時は Excel が raw ID + '(未解決)' で表示
 --confirm yes|no: Phase 7 の y/n 判定を CLI から指定（stdin プロンプト回避）
 --no-commit: Phase 8 の git commit を skip（テスト用、state 更新は実行）
 --run-tests: Phase 5 (npm test / e2e / audit) を実行（デフォルトは skip、時間かかる）
 --skip-report: Phase 6 (Excel 報告書) を skip（デフォルトは実行、Python + openpyxl 必要）
---run-screenshot: Phase 4 (Playwright screenshot) を実行（デフォルトは skip、dev server 事前起動必要、before/after 2 回撮影 + pixelmatch diff）
+--run-screenshot: 後方互換フラグ（Phase 4 はデフォルトで実行）
+--no-screenshot: Phase 4 (Playwright screenshot) を skip。デフォルトは実行、runner が dev server を windowsHide で自動起動/停止
 --dry-run: state/snapshot/file 全て書き換えない`);
       process.exit(0);
     }
@@ -112,6 +117,17 @@ async function main() {
   config.reactAppRoot = REACT_APP_ROOT;
   const state = loadState(STATE_PATH);
   const { ts, runsDir } = ensureRunsDir(SYNC_ROOT);
+
+  // variables.json は Phase 6 (Excel report) で VariableID → 変数名/値 解決に使う。
+  // 指定あれば即 runsDir にコピー（Phase 6 の 06-report.py が runDir/variables.json を読む）。
+  if (args.variablesFile) {
+    if (!existsSync(args.variablesFile)) {
+      console.error(`❌ --variables-file: file not found: ${args.variablesFile}`);
+      process.exit(1);
+    }
+    copyFileSync(args.variablesFile, join(runsDir, 'variables.json'));
+    console.log(`variables.json copied → ${runsDir}/variables.json`);
+  }
 
   console.log(`=== figma-sync run @ ${ts} ===`);
   console.log(`config.figmaFileUrl: ${config.figmaFileUrl}`);
@@ -298,21 +314,36 @@ async function runPhases3to9({
   console.log(`[Phase 3-pre] resolved frame nodeIds for screenshot: [${changedFrameIds.join(', ') || '(none)'}]`);
 
   // Phase 4-before: apply の前に現状 UI を撮る
+  //   静默 dev server を runner が管理する。既存 server がいれば reuse し kill しない
   let beforeShotRes = null;
-  if (!args.skipScreenshot && changedFrameIds.length > 0) {
-    console.log(`[Phase 4-before] Playwright で apply 前の screenshot 撮影中...（dev server 事前起動前提）`);
+  let devServerHandle = null;
+  const shouldShoot = !args.skipScreenshot && changedFrameIds.length > 0;
+  if (shouldShoot) {
+    const devLogPath = join(runsDir, 'dev-server.log');
+    console.log(`[Phase 4-pre] dev server 静默起動中...（log=${devLogPath}）`);
     try {
-      beforeShotRes = await takeScreenshots({
-        config, runDir: runsDir, phase: 'before', changedFrameIds
-      });
-      const took = beforeShotRes.screenshots.filter(s => s.before).length;
-      const skipped = beforeShotRes.screenshots.filter(s => s.skipped).length;
-      console.log(`[Phase 4-before] ✅ 撮影 ${took} / skip ${skipped} → ${beforeShotRes.outDir}`);
+      devServerHandle = await startSilentDevServer({ config, logPath: devLogPath });
+      console.log(`[Phase 4-pre] dev server ready (reused=${devServerHandle.reused}, pid=${devServerHandle.pid || '-'})`);
     } catch (e) {
-      console.error(`[Phase 4-before] ⚠️ 撮影失敗（${e.message.slice(0, 150)}）— apply は続行`);
+      console.error(`[Phase 4-pre] ⚠️ dev server 起動失敗（${e.message.slice(0, 200)}）— screenshot skip、apply は続行`);
+      devServerHandle = null;
+    }
+
+    if (devServerHandle) {
+      console.log(`[Phase 4-before] Playwright で apply 前の screenshot 撮影中...`);
+      try {
+        beforeShotRes = await takeScreenshots({
+          config, runDir: runsDir, phase: 'before', changedFrameIds
+        });
+        const took = beforeShotRes.screenshots.filter(s => s.before).length;
+        const skipped = beforeShotRes.screenshots.filter(s => s.skipped).length;
+        console.log(`[Phase 4-before] ✅ 撮影 ${took} / skip ${skipped} → ${beforeShotRes.outDir}`);
+      } catch (e) {
+        console.error(`[Phase 4-before] ⚠️ 撮影失敗（${e.message.slice(0, 150)}）— apply は続行`);
+      }
     }
   } else if (args.skipScreenshot) {
-    console.log(`[Phase 4-before] SKIP — --run-screenshot 未指定`);
+    console.log(`[Phase 4-before] SKIP — --no-screenshot 指定`);
   } else {
     console.log(`[Phase 4-before] SKIP — changedFrameIds 空`);
   }
@@ -332,7 +363,9 @@ async function runPhases3to9({
   let afterShotRes = null;
   const diffResults = new Map();  // component -> {diffPixels, diffPath}
   if (args.skipScreenshot) {
-    console.log(`[Phase 4-after] SKIP — --run-screenshot 未指定`);
+    console.log(`[Phase 4-after] SKIP — --no-screenshot 指定`);
+  } else if (!devServerHandle) {
+    console.log(`[Phase 4-after] SKIP — dev server が上がっていない`);
   } else if (applyRes.changedFiles.length === 0) {
     console.log(`[Phase 4-after] SKIP — changedFiles 空`);
   } else if (changedFrameIds.length === 0) {
@@ -365,6 +398,14 @@ async function runPhases3to9({
     } catch (e) {
       console.error(`[Phase 4-after] ⚠️ 撮影失敗（${e.message.slice(0, 150)}）— Phase 5 は続行`);
     }
+  }
+
+  // dev server の後始末：runner が起動したものだけ止める（reused は他セッションに委ねる）
+  if (devServerHandle && !devServerHandle.reused) {
+    const stopRes = stopSilentDevServer(devServerHandle);
+    console.log(`[Phase 4-post] dev server stop: killed=${stopRes.killed}, status=${stopRes.status ?? '-'}`);
+  } else if (devServerHandle?.reused) {
+    console.log(`[Phase 4-post] dev server reuse — kill せず（既存 session を守る）`);
   }
 
   // ── design_changes.json 書き出し（Phase 6 Excel から参照） ──
