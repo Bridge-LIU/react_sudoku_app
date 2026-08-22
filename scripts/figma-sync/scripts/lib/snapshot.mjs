@@ -35,7 +35,7 @@ export function verdictForFrame(current, baseline) {
   const jsonSame = current.jsonHash === baseline.json_hash;
   const pngSame  = current.pngHash === baseline.png_hash;
   if (current.pngHash === null) {
-    return jsonSame ? 'SUSPICIOUS' : 'SUSPICIOUS';
+    return 'SUSPICIOUS';
   }
   if (jsonSame && pngSame) return 'NO_CHANGE';
   if (!jsonSame && !pngSame) return 'CHANGED';
