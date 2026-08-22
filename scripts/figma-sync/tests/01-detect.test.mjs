@@ -67,3 +67,49 @@ it('emits _tmp/changed-frames.json listing only changed frames', async () => {
   const written = JSON.parse(readFileSync(changedPath, 'utf-8'));
   expect(written).toEqual(res.frames.filter(f => f.verdict !== 'NO_CHANGE'));
 });
+
+it('propagates errors from nodeSnapshot (fail-fast on frame fetch)', async () => {
+  await expect(detect({
+    syncRoot: root, config: cfg,
+    state: { last_version_id: 'V0' },
+    fetchers: {
+      headVersion: async () => fakeHead('V1'),
+      nodeSnapshot: async () => { throw new Error('boom'); },
+      framePng: async () => Buffer.from([0x89, 0x50])
+    }
+  })).rejects.toThrow('boom');
+});
+
+it('mixes verdicts: NO_CHANGE for baseline-match frames, CHANGED for new ones', async () => {
+  // Seed index.json with a baseline for frame 1:1 that matches what we'll hash below
+  const { writeFileSync: writeFS, mkdirSync: mkdirFS } = await import('node:fs');
+  const { normalizeFigmaJson, sha256OfJson, sha256Hex } = await import('../scripts/lib/hash.mjs');
+  const doc = { id: '1:1', name: 'stable' };
+  const rawNode = { document: doc };
+  const jsonHash = sha256OfJson(normalizeFigmaJson(doc));
+  const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+  const pngHash = sha256Hex(pngBytes);
+  mkdirFS(join(root, 'snapshots'), { recursive: true });
+  writeFS(join(root, 'snapshots', 'index.json'), JSON.stringify({
+    version: 1,
+    frames: { '1:1': { json_hash: jsonHash, png_hash: pngHash, taken_at: 't', version_id: 'V0' } }
+  }), 'utf-8');
+
+  const res = await detect({
+    syncRoot: root, config: cfg,
+    state: { last_version_id: 'V0' },
+    fetchers: {
+      headVersion: async () => fakeHead('V1'),
+      nodeSnapshot: async ({ nodeId }) => ({ nodes: { [nodeId]: nodeId === '1:1' ? rawNode : { document: { id: nodeId, name: 'new' } } } }),
+      framePng: async ({ nodeId }) => nodeId === '1:1' ? pngBytes : Buffer.from([0x99])
+    }
+  });
+
+  const byId = Object.fromEntries(res.frames.map(f => [f.nodeId, f.verdict]));
+  expect(byId['1:1']).toBe('NO_CHANGE');
+  expect(byId['2:2']).toBe('CHANGED');
+
+  // changed-frames.json must only contain the CHANGED frame
+  const written = JSON.parse(readFileSync(join(root, '_tmp', 'changed-frames.json'), 'utf-8'));
+  expect(written.map(f => f.nodeId)).toEqual(['2:2']);
+});

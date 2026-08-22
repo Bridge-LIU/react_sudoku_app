@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   readIndex, persistFrameSnapshot, verdictForFrame
@@ -16,6 +16,8 @@ export async function detect({ syncRoot, config, state, fetchers }) {
 
   const snapshotsDir = join(syncRoot, 'snapshots');
   const tmpDir = join(syncRoot, '_tmp');
+  const candidateDir = join(tmpDir, 'candidate');
+  rmSync(candidateDir, { recursive: true, force: true });
   mkdirSync(tmpDir, { recursive: true });
   const index = readIndex(snapshotsDir);
 
@@ -41,7 +43,8 @@ export async function detect({ syncRoot, config, state, fetchers }) {
       pngHash = null;
     }
 
-    persistFrameSnapshot(join(syncRoot, '_tmp', 'candidate'), frame.nodeId, snap.nodes[frame.nodeId], pngBuf);
+    // Persist raw JSON (for human diff); the hash we compare is the normalized form.
+    persistFrameSnapshot(candidateDir, frame.nodeId, snap.nodes[frame.nodeId], pngBuf);
 
     const baseline = index.frames[frame.nodeId] || null;
     const verdict = verdictForFrame({ jsonHash, pngHash }, baseline);
