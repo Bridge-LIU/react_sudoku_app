@@ -35,21 +35,14 @@ export async function verifyFrames({ config, runDir, changedFrames, syncRoot }) 
   const results = [];
   const devLogPath = join(runDir, 'dev-server.log');
   const dev = await startSilentDevServer({ config, logPath: devLogPath });
-  const browser = await chromium.launch({ headless: true });
+  let browser;
   try {
-    const ctx = await browser.newContext({
-      viewport: config.playwright?.viewport ?? { width: 1440, height: 900 }
-    });
+    browser = await chromium.launch({ headless: true });
     for (const frame of changedFrames) {
       if (!frame.route) {
         results.push({ nodeId: frame.nodeId, status: 'SKIPPED', reason: 'no route' });
         continue;
       }
-      const page = await ctx.newPage();
-      const url = `${config.devServer.url}${frame.route}`;
-      await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
-      const shotBuf = await page.screenshot({ fullPage: false });
-      await page.close();
 
       const safe = frame.nodeId.replace(/:/g, '-');
       const figmaPngPath = join(syncRoot, '_tmp', 'candidate', `${safe}.png`);
@@ -57,7 +50,20 @@ export async function verifyFrames({ config, runDir, changedFrames, syncRoot }) 
         results.push({ nodeId: frame.nodeId, status: 'SKIPPED', reason: 'no figma png' });
         continue;
       }
-      const outcome = comparePng(shotBuf, readFileSync(figmaPngPath), config.pixelmatchThreshold ?? 0.1);
+
+      const figmaPngBuf = readFileSync(figmaPngPath);
+      const figmaPng = PNG.sync.read(figmaPngBuf);
+      const ctx = await browser.newContext({
+        viewport: { width: figmaPng.width, height: figmaPng.height }
+      });
+      const page = await ctx.newPage();
+      const url = `${config.devServer.url}${frame.route}`;
+      await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+      const shotBuf = await page.screenshot({ fullPage: false });
+      await page.close();
+      await ctx.close();
+
+      const outcome = comparePng(shotBuf, figmaPngBuf, config.pixelmatchThreshold ?? 0.1);
       const diffPath = join(runDir, `verify_${safe}.png`);
       writeFileSync(diffPath, outcome.diffPngBuf);
       results.push({
@@ -65,7 +71,7 @@ export async function verifyFrames({ config, runDir, changedFrames, syncRoot }) 
       });
     }
   } finally {
-    await browser.close();
+    if (browser) await browser.close().catch(() => {});
     if (!dev.reused) stopSilentDevServer(dev);
   }
   return results;
