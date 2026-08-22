@@ -1,7 +1,8 @@
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { saveState, saveSnapshot } from './lib/config.mjs';
+import { readIndex, writeIndex } from './lib/snapshot.mjs';
 import readline from 'node:readline/promises';
 
 /**
@@ -97,4 +98,33 @@ function countRecentFallbacks(reactAppRoot) {
   // 過去 7 日以内の runs/<ts>/fallback.log の件数を数える簡易実装
   // 実装本体で精度アップ想定
   return 1;
+}
+
+/**
+ * Promote candidate snapshots to permanent snapshots/ after successful commit.
+ * Task 9's runner calls this in the APPROVED branch, never on REJECTED.
+ *
+ * @param {object} params
+ * @param {string} params.syncRoot - .../react_sudoku_app/scripts/figma-sync
+ * @param {string} params.headVersionId
+ * @param {Array<{nodeId:string, jsonHash:string, pngHash:string|null}>} params.changedFrames
+ */
+export function promoteCandidateSnapshots({ syncRoot, headVersionId, changedFrames }) {
+  const snapDir = join(syncRoot, 'snapshots');
+  const candidateDir = join(syncRoot, '_tmp', 'candidate');
+  const idx = readIndex(snapDir);
+  for (const f of changedFrames) {
+    const safe = f.nodeId.replace(/:/g, '-');
+    const jsonSrc = join(candidateDir, `${safe}.json`);
+    const pngSrc  = join(candidateDir, `${safe}.png`);
+    if (existsSync(jsonSrc)) copyFileSync(jsonSrc, join(snapDir, `${safe}.json`));
+    if (existsSync(pngSrc))  copyFileSync(pngSrc,  join(snapDir, `${safe}.png`));
+    idx.frames[f.nodeId] = {
+      json_hash: f.jsonHash,
+      png_hash:  f.pngHash,
+      taken_at:  new Date().toISOString(),
+      version_id: headVersionId
+    };
+  }
+  writeIndex(snapDir, idx);
 }
